@@ -1,10 +1,10 @@
 class Producto:
-    def __init__(self, nombre, cantidad, precio): 
-        self.nombre = nombre
-        self.cantidad = cantidad
-        self.precio = precio
+    def __init__(self, nombre: str, cantidad: int, precio: float): 
+        self.nombre: str = nombre
+        self.cantidad: int = cantidad
+        self.precio: float = precio
         self.siguiente = None
         self.anterior = None
 
     def __str__(self):
-        return f"Nombre: {self.nombre} Cantidad: {self.cantidad} Precio: {self.precio}"
+        return f"\tNombre: {self.nombre} \tCantidad: {self.cantidad} \tPrecio: {self.precio}"
