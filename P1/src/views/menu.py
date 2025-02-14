@@ -19,16 +19,16 @@ class Menu:
         if opcion == "1":
             print("Agregar producto")
         elif opcion == "2":
-            print("Mostrar productos")
+            print("Eliminar producto")
         elif opcion == "3":
-            self.buscarProducto()
+            print("Mostrar lista de productos")
         elif opcion == "4":
-            self.eliminarProducto()
+            print("Mostrar lista de productos ordenados")
         elif opcion == "5":
-            print("Gracias por usar")
-            exit()
+            print("Buscar producto")
+        elif opcion == "6":
+            print("Salir")
         else:
             print("Opción no válida")
-            self.mostrar()
-
+    
     
