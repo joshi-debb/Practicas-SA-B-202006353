@@ -1,6 +1,7 @@
-
-from colorama import init, Fore, Back, Style # Libreía para colores en la consola
-init(autoreset=True)  # Resetea los colores automáticamente
+# Libreía para colores en la consola
+from colorama import init, Fore, Back, Style 
+# Resetea los colores automáticamente
+init(autoreset=True)  
 
 import os
 
@@ -27,11 +28,15 @@ class Menu:
             print("------------------------------------------------")
 
             opcion = input(Fore.GREEN + "\n Elija una opción: ")
-            
+
             if opcion == "1":
+
                 os.system('cls')
+
                 print("\nAgregar un nuevo producto al inventario")
                 print(Style.RESET_ALL)
+
+                # Validar los valores ingresados
                 try:
                     nombre = input("Ingrese el nombre del producto: ")
                     cantidad = int(input("Ingrese la cantidad: "))
@@ -44,38 +49,80 @@ class Menu:
                 self.listaProductos.agregarProducto(nombre, cantidad, precio)
 
             elif opcion == "2":
+
                 os.system('cls')
+
                 print("\nEliminar un producto del inventario")
+
                 nombre = input(Fore.RED + "  Ingrese el nombre del producto a eliminar: ")
+
                 self.listaProductos.eliminarProducto(nombre)
+
                 input("\nPresione una tecla para continuar...")
 
             elif opcion == "3":
+
+                os.system('cls')
+
                 print("\nMostrar la lista de productos")
                 print(Style.RESET_ALL)
+
                 self.listaProductos.mostrarProductos()
+
                 input("\nPresione una tecla para continuar...")
 
             elif opcion == "4":
+
+                os.system('cls')
+
                 print("\nProductos ordenados por precio")
                 print(Style.RESET_ALL)
+
                 self.listaProductos.ordenarPorPrecio()
+
                 self.listaProductos.mostrarProductos()
+
                 input("\nPresione una tecla para continuar...")
 
             elif opcion == "5":
+
+                os.system('cls')
+
                 print("\nProductos ordenados por cantidad")
                 print(Style.RESET_ALL)
+
                 self.listaProductos.ordenarPorCantidad()
+
                 self.listaProductos.mostrarProductos()
+
                 input("\nPresione una tecla para continuar...")
-            
+
             elif opcion == "6":
-                print("Buscar producto")
+
+                os.system('cls')
+
+                print("\nBuscar producto")
+                print(Style.RESET_ALL)
+
+                nombre = input("Ingrese el nombre del producto: ")
+
+                producto = self.listaProductos.buscarProducto(nombre)
+
+                # Validar si el objeto producto es None
+                if producto:
+                    print(producto)
+                else:
+                    print(Fore.RED + "Producto no encontrado")
+
+                input("\nPresione una tecla para continuar...")
 
             elif opcion == "7":
+
+                os.system('cls')
+
                 print(Fore.RED + "Aplicación cerrada")
                 break;
+
             else:
                 print(Fore.RED + "Opción no válida")
     
