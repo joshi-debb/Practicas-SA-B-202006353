@@ -54,56 +54,16 @@ class ListaProducto:
             print(actual)
             actual = actual.siguiente
 
-    # Ordenar por precio
-    def ordenarPorPrecio(self):
-        # Validar si la lista esta vacia o solo tiene un elemento
-        if not self.primero or not self.primero.siguiente:
-            print("No hay suficientes productos en la lista para ordenar")
-            return
-        
-        # Ordenamiento burbuja
-        cambiado = True
-        while cambiado:
-            cambiado = False
-            actual = self.primero
-            while actual.siguiente:
-                if actual.precio > actual.siguiente.precio:
-                    # Intercambiar los valores de los nodos
-                    actual.precio, actual.siguiente.precio = actual.siguiente.precio, actual.precio
-                    cambiado = True
-                actual = actual.siguiente
-
-    # Ordenar por cantidad
-    def ordenarPorCantidad(self):
-        # Validar si la lista esta vacia o solo tiene un elemento
-        if not self.primero or not self.primero.siguiente:
-            print("No hay suficientes productos en la lista para ordenar")
-            return
-
-        # Ordenamiento burbuja
-        cambiado = True
-        while cambiado:
-            cambiado = False
-            actual = self.primero
-            while actual.siguiente:
-                if actual.cantidad > actual.siguiente.cantidad:
-                    # Intercambiar los valores de los nodos
-                    actual.cantidad, actual.siguiente.cantidad = actual.siguiente.cantidad, actual.cantidad
-                    cambiado = True
-                actual = actual.siguiente
-
-
-    # Buscar producto por nombre
-    def buscarProducto(self, nombre):
+    # Obtener lista de productos
+    def obtenerProductos(self):
+        #lista auxiliar guardar los productos
+        productos = []
         actual = self.primero
-        encontrado = False
-
-        # Recorrer la lista y buscar el producto
-        while actual and not encontrado:
-            if actual.nombre == nombre:
-                return actual
-            else:
-                actual = actual.siguiente
+        # Recorrer la lista y guardar los productos
+        while actual:
+            productos.append(actual)
+            actual = actual.siguiente
+        return productos
 
     
 

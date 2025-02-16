@@ -1,7 +1,9 @@
-# Libreía para colores en la consola
-from colorama import init, Fore, Back, Style 
-# Resetea los colores automáticamente
-init(autoreset=True)  
+import os
+from colorama import init, Fore, Back, Style
+from models.listaProducto import ListaProducto
+from models.gestorInventario import GestorInventario
+
+init(autoreset=True)
 
 import os
 
@@ -10,6 +12,7 @@ from models.listaProducto import ListaProducto
 class Menu:
     def __init__(self):
         self.listaProductos = ListaProducto()
+        self.gestorInventario = GestorInventario(self.listaProductos)
 
     def mostrar(self):
 
@@ -67,7 +70,8 @@ class Menu:
                 print("\nMostrar la lista de productos")
                 print(Style.RESET_ALL)
 
-                self.listaProductos.mostrarProductos()
+                for producto in self.listaProductos.obtenerProductos():
+                    print(producto)
 
                 input("\nPresione una tecla para continuar...")
 
@@ -78,9 +82,10 @@ class Menu:
                 print("\nProductos ordenados por precio")
                 print(Style.RESET_ALL)
 
-                self.listaProductos.ordenarPorPrecio()
+                productos = self.gestorInventario.ordenarProductos(lambda producto: producto.precio)
 
-                self.listaProductos.mostrarProductos()
+                for producto in productos:
+                    print(producto)
 
                 input("\nPresione una tecla para continuar...")
 
@@ -91,9 +96,10 @@ class Menu:
                 print("\nProductos ordenados por cantidad")
                 print(Style.RESET_ALL)
 
-                self.listaProductos.ordenarPorCantidad()
+                productos = self.gestorInventario.ordenarProductos(lambda producto: producto.cantidad)
 
-                self.listaProductos.mostrarProductos()
+                for producto in productos:
+                    print(producto)
 
                 input("\nPresione una tecla para continuar...")
 
@@ -106,10 +112,9 @@ class Menu:
 
                 nombre = input("Ingrese el nombre del producto: ")
 
-                producto = self.listaProductos.buscarProducto(nombre)
+                producto = self.gestorInventario.buscarProducto(nombre)
 
-                # Validar si el objeto producto es None
-                if producto:
+                if producto is not None:
                     print(producto)
                 else:
                     print(Fore.RED + "Producto no encontrado")
@@ -124,6 +129,7 @@ class Menu:
                 break;
 
             else:
-                print(Fore.RED + "Opción no válida")
+                input(Fore.RED + "\n\tOpción no válida... Presione una tecla para continuar...")
+
     
     
