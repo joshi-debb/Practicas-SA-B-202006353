@@ -13,9 +13,28 @@ const SignIn = () => {
 
     const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        navigate('/home');
+
+        try {
+            const response = await fetch('http://localhost:3000/auth/login', {
+                method: 'POST',
+                credentials: 'include', // Para enviar cookies de sesión
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: user, password: password})
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                swal("Éxito", "Inicio de sesión exitoso", "success");
+                navigate('/home');
+            } else {
+                swal("Error", data.message, "error");
+            }
+        } catch (error) {
+            swal("Error", "No se pudo conectar con el servidor", "error");
+        }
     };
 
     const goToSignUp = () => {
@@ -25,15 +44,10 @@ const SignIn = () => {
 
     return (
         <StyledWrapper>
-
-
-
             <form className="form" onSubmit={handleSubmit}>
 
                 <h1 className="form-title">JWT APP</h1>
-
                 <img src={ImageIcon} />
-
                 <p>Inicio de Sesion</p>
 
                 <div>
@@ -50,12 +64,7 @@ const SignIn = () => {
                     <a rel="noopener noreferrer" onClick={goToSignUp} className="signup-link link"> Regístrate</a>
                 </p>
 
-
-
-
             </form>
-
-
         </StyledWrapper>
     );
 };

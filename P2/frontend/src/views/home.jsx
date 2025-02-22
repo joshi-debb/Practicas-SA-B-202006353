@@ -1,19 +1,38 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styled from 'styled-components';
-
-import ImageIcon from '../assets/incognito.png';
 
 import Button from '../components/Button';
 import { useNavigate } from 'react-router-dom';
 
 const Home = () => {
-    const [user, setUser] = useState("");
-    const [password, setPassword] = useState("");
-
     const navigate = useNavigate();
+    const [message, setMessage] = useState("");
 
-    const handleCancel = (e) => {
-        e.preventDefault();
+    useEffect(() => {
+        const checkAuth = async () => {
+            try {
+                const response = await fetch('http://localhost:3000/home', {
+                    method: 'GET',
+                    credentials: 'include',
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    setMessage(data.message);
+                } else {
+                    navigate('/');
+                }
+            } catch (error) {
+                navigate('/');
+            }
+        };
+
+        checkAuth();
+    }, [navigate]);
+
+    const handleLogout = () => {
+        document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
         navigate('/');
     };
 
@@ -22,7 +41,8 @@ const Home = () => {
             <div className="home">
                 <h1>Home</h1>
                 <form>
-                    <Button type="button" label="Salir" color="#982B1C" onClick={handleCancel} />
+                    <h1>{message || "Cargando..."}</h1>
+                    <Button type="button" label="Salir" color="#982B1C" onClick={handleLogout} />
                 </form>
             </div>
         </StyledWrapper>
