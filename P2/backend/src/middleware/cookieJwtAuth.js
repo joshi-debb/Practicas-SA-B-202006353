@@ -22,7 +22,7 @@ const cookieJwtAuth = (req, res, next) => {
                 // Verificar si está dentro del período de gracia
                 if (now - expiredAt <= gracePeriodInSeconds) {
                     const newToken = jwt.sign(
-                        { id: user.id, username: user.username },
+                        { id: user.id, username: user.user },
                         SECRET_KEY,
                         { expiresIn: TOKEN_EXPIRATION }
                     );

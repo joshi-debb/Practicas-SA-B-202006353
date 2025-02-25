@@ -57,7 +57,21 @@ cd frontend
 npm install
 ```
 
-### **3. Configurar Variables de Entorno**
+### **3. Ejecutar script .sql en entorno preferido**
+
+```sh
+CREATE DATABASE IF NOT EXISTS practica2;
+
+USE practica2;
+
+CREATE TABLE users (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    user VARCHAR(255) NOT NULL UNIQUE,
+    pass VARCHAR(255) NOT NULL
+);
+```
+
+### **4. Configurar Variables de Entorno**
 Crea un archivo `.env` en la raíz del backend y agrega:
 ```env
 JWT_SECRET=tu-clave-secreta-y-segura
@@ -69,14 +83,14 @@ DB_PASSWORD=tu_contraseña
 DB_NAME=practica2
 ```
 
-### **4️. Ejecutar el Servidor**
+### **5. Ejecutar el Servidor**
 
 ```sh
 cd backend
 npm start
 ```
 
-### **5️. Ejecutar el fronted**
+### **6. Ejecutar el fronted**
 
 ```sh
 cd frontend
