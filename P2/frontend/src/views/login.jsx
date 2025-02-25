@@ -7,7 +7,7 @@ import Button from '../components/Button';
 import { useNavigate } from 'react-router-dom';
 import swal from 'sweetalert';
 
-const SignIn = () => {
+const Login = () => {
     const [user, setUser] = useState("");
     const [password, setPassword] = useState("");
 
@@ -17,7 +17,7 @@ const SignIn = () => {
         e.preventDefault();
 
         try {
-            const response = await fetch('http://localhost:3000/auth/login', {
+            const response = await fetch('http://localhost:8080/users/login', {
                 method: 'POST',
                 credentials: 'include', // Para enviar cookies de sesión
                 headers: { 'Content-Type': 'application/json' },
@@ -136,4 +136,4 @@ const StyledWrapper = styled.div`
     }
 `;
 
-export default SignIn;
+export default Login;

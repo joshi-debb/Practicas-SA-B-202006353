@@ -11,16 +11,19 @@ const Home = () => {
     useEffect(() => {
         const checkAuth = async () => {
             try {
-                const response = await fetch('http://localhost:3000/home', {
+                const response = await fetch('http://localhost:8080/protected/home', {
                     method: 'GET',
                     credentials: 'include',
                 });
 
                 const data = await response.json();
 
+                console.log('data', data);
+
                 if (response.ok) {
                     setMessage(data.message);
                 } else {
+                    swal("Error", data.message, "error");
                     navigate('/');
                 }
             } catch (error) {
@@ -31,9 +34,23 @@ const Home = () => {
         checkAuth();
     }, [navigate]);
 
-    const handleLogout = () => {
-        document.cookie = "token=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
-        navigate('/');
+    const handleLogout  = async () => {
+        try {
+            const response = await fetch('http://localhost:8080/users/logout', {
+                method: 'GET',
+                credentials: 'include',
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                swal("Éxito", data.message, "info");
+                navigate('/');
+            }
+
+        } catch (error) {
+            navigate('/');
+        }
     };
 
     return (

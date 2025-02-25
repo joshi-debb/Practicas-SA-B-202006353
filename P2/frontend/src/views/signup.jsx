@@ -14,8 +14,30 @@ const SignUp = () => {
 
     const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
+
+        try {
+            const response = await fetch('http://localhost:8080/users/register', {
+                method: 'POST',
+                credentials: 'include', // Para enviar cookies de sesión
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username: user, password: password})
+            });
+
+            const data = await response.json();
+            
+            console.log(data);  
+
+            if (response.ok) {
+                swal("Éxito", "Registro exitoso", "success");
+                navigate('/');
+            } else {
+                swal("Error", data.message, "error");
+            }
+        } catch (error) {
+            swal("Error", "No se pudo conectar con el servidor", "error");
+        }
     };
 
     const goToSignIn = () => {
