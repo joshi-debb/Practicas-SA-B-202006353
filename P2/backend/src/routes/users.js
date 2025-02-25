@@ -3,34 +3,41 @@ const jwt = require('jsonwebtoken')
 const router = express.Router()
 const queries = require('../connections/database')
 const bcrypt = require('bcrypt')
+const { encrypt, decrypt } = require('../utils/encryption');
+
 
 const SECRET_KEY = process.env.JWT_SECRET;
 const TOKEN_EXPIRATION = process.env.JWT_EXPIRATION;
 
 router.post('/register', async (req, res) => {
     try {
-
-        const checkUser = await queries.getUserByUserName(req.body.username)
-        if (checkUser.length > 0) return res.status(401).json({ message: 'Usuario ya existe' });
+        const { username, password } = req.body;
+        const users = await queries.getUsers();
         
-        const hashedPassword = await bcrypt.hash(req.body.password, 10);
-
-        const user = await queries.createUser(req.body.username, hashedPassword)
+        const User = users.find(u => decrypt(u.user) === username);
+        if (User) return res.status(401).json({ message: 'Usuario ya existe!' });
+        
+        const user = await queries.createUser(encrypt(username), encrypt(password))
         res.json(user)
     } catch (error) {
         res.json({ error: error.message })
     }
 })
 
+
+
 router.post('/login', async (req, res) => {
     try {
-        const user = await queries.getUserByUserName(req.body.username)
-        if (user.length === 0) return res.status(401).json({ message: 'Usuario no encontrado' });
 
-        const validPassword = await bcrypt.compare(req.body.password, user[0].password);
-        if (!validPassword) return res.status(401).json({ message: 'Credenciales inválidas' });
+        const { username, password } = req.body;
+        const users = await queries.getUsers();
         
-        const token = jwt.sign({ id: user.id, username: user.username }, SECRET_KEY, { expiresIn: TOKEN_EXPIRATION });
+        const User = users.find(u => decrypt(u.user) === username);
+        if (!User) return res.status(401).json({ message: 'Usuario no encontrado' });
+
+        if (decrypt(User.pass) !== password) return res.status(401).json({ message: 'Credenciales inválidas' });
+    
+        const token = jwt.sign({ id: User.id, username: decrypt(User.user) }, SECRET_KEY, { expiresIn: TOKEN_EXPIRATION });
 
         res.cookie('access_token', token, { httpOnly: true, secure: true, sameSite: 'strict' });
 

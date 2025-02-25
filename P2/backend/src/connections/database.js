@@ -23,10 +23,11 @@ async function getUsers() {
     }
 }
 
-async function getUserByUserName(username) {
+
+async function getUser(username) {
     const connection = await connect_to_db();
     try {
-        const [results] = await connection.query('SELECT * FROM users WHERE username = ?', [username]);
+        const [results] = await connection.query('SELECT * FROM users WHERE user = ?', [username]);
         return results;
     } catch(error){
         return error.message
@@ -38,7 +39,7 @@ async function getUserByUserName(username) {
 async function createUser(username, password) {
     const connection = await connect_to_db();
     try {
-        const [results] = await connection.query('INSERT INTO users (username, password) VALUES (?, ?)', [username, password]);
+        const [results] = await connection.query('INSERT INTO users (user, pass) VALUES (?, ?)', [username, password]);
         return results;
     } catch(error){
         return error.message
@@ -48,7 +49,7 @@ async function createUser(username, password) {
 }
 
 module.exports = {
-    getUserByUserName,
+    getUser,
     getUsers,
     createUser
 }

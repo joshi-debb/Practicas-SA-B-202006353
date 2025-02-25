@@ -4,8 +4,8 @@ CREATE DATABASE IF NOT EXISTS practica2;
 USE practica2;
 
 -- Table for user data
-CREATE TABLE user_data (
+CREATE TABLE users (
     id INT PRIMARY KEY AUTO_INCREMENT,
-    user VARCHAR(50) NOT NULL UNIQUE,
-    pass VARCHAR(50) NOT NULL
+    user VARCHAR(255) NOT NULL UNIQUE,
+    pass VARCHAR(255) NOT NULL
 );
