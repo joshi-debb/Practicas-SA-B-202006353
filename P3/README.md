@@ -9,12 +9,12 @@
 
 ## 1. Microservicio de Autenticación Interna
 
-#### **Responsabilidades**
+### **Responsabilidades**
 - Gestionar la autenticación y autorización interna, complementando el servicio OAuth externo.
 - Administrar usuarios, roles y permisos.
 - Emitir y validar tokens (por ejemplo, JWT) para asegurar la comunicación entre microservicios.
 
-#### **Funcionalidades y Endpoints**
+### **Funcionalidades y Endpoints**
 - **Autenticación de Usuarios:** `POST /login`   
   Recibe credenciales (usuario y contraseña), las valida contra la base de datos interna y emite un token JWT.   
 
@@ -27,7 +27,7 @@
 - **Integración con Servicio OAuth Externo:**  
   Realiza solicitudes HTTP/REST para validar o sincronizar tokens con el servicio OAuth externo.
 
-#### **Tecnologías**
+### **Tecnologías**
 - **Lenguaje:** Node.js
 - **Framework:** Express
 - **Base de Datos:** AWS RDS (MySQL)
@@ -41,13 +41,13 @@
 
 ## 2. Microservicio de Planillas
 
-#### Responsabilidades
+### Responsabilidades
 - Procesar y validar planillas en formato CSV.
 - Coordinar el flujo de aprobación en tres pasos.
 - Publicar eventos (por ejemplo, "Planilla Aprobada") en el bus de eventos para activar acciones en otros microservicios.
 - Integrarse con un servicio financiero externo para iniciar el cierre de planillas aprobadas.
 
-#### Funcionalidades y Endpoints
+### Funcionalidades y Endpoints
 - **Carga y Validación de Planillas:** `POST /planillas/cargar`  
   Recibe un archivo CSV, lo valida y extrae la información necesaria.
   
@@ -63,7 +63,7 @@
 - **Integración con Servicio de Finanzas Externo:**  
   Envía una solicitud HTTP/REST al servicio financiero para iniciar el cierre de la planilla.
 
-#### Tecnologías
+### Tecnologías
 - **Lenguaje:** Node.js
 - **Framework:** Express
 - **Base de Datos:** AWS RDS (MySQL)
@@ -78,18 +78,18 @@
 
 ## 3. Microservicio de Almacenamiento
 
-#### Responsabilidades
+### Responsabilidades
 - Gestionar la subida, almacenamiento y descarga de archivos CSV.
 - Garantizar el almacenamiento seguro y escalable de los archivos.
 
-#### Funcionalidades y Endpoints
+### Funcionalidades y Endpoints
 - **Subida de Archivos:** `POST /archivos/subir`  
   Recibe un archivo CSV (multipart/form-data), lo almacena y devuelve un identificador o URL.
   
 - **Descarga de Archivos:** `GET /archivos/{id}`   
   Permite recuperar el archivo almacenado mediante su identificador.
 
-#### Tecnologías
+### Tecnologías
 - **Lenguaje:** Node.js
 - **Framework:** Express
 - **Almacenamiento:** AWS S3 Bucket
@@ -102,18 +102,18 @@
 
 ## 4. Microservicio de Notificaciones
 
-#### Responsabilidades
+### Responsabilidades
 - Enviar notificaciones (por ejemplo, correos electrónicos) a los usuarios cuando se aprueben planillas.
 - Administrar plantillas y contenido dinámico para los mensajes de notificación.
 
-#### Funcionalidades y Endpoints
+### Funcionalidades y Endpoints
 - **Envío de Notificaciones:** `POST /notificaciones/enviar`   
   Recibe un payload con destinatarios, asunto y mensaje; utiliza un servicio SMTP para enviar los correos.
   
 - **Suscripción a Eventos:**  
   Se suscribe a eventos (como "Planilla Aprobada") en AWS MSK para activar el envío automático de notificaciones.
 
-#### Tecnologías
+### Tecnologías
 - **Lenguaje:** Node.js
 - **Framework:** Express
 - **Librerías:** 
@@ -126,11 +126,11 @@
 
 ## 5. Microservicio de Logs
 
-#### Responsabilidades
+### Responsabilidades
 - Registrar y almacenar de forma centralizada todos los eventos críticos y auditorías del sistema.
 - Facilitar la consulta y análisis de logs para fines de seguridad y trazabilidad.
 
-#### Funcionalidades y Endpoints
+### Funcionalidades y Endpoints
 - **Registro de Eventos:** `POST /logs/registrar`  
   Recibe eventos (por ejemplo, cambios de estado, errores) y los almacena.
   
@@ -140,7 +140,7 @@
 - **Suscripción a Eventos:**  
   Se suscribe a eventos en AWS MSK para registrar automáticamente eventos relevantes.
 
-#### Tecnologías
+### Tecnologías
 - **Lenguaje:** Node.js
 - **Framework:** Express
 - **Base de Datos:** AWS DocumentDB (compatible con MongoDB)
@@ -153,7 +153,7 @@
 
 ## Servicios de Infraestructura en AWS
 
-#### API Gateway con AWS
+### API Gateway con AWS
 - **Descripción:**  
   AWS API Gateway se utiliza para exponer los endpoints REST de los microservicios, proporcionando escalabilidad, seguridad y control centralizado de las APIs.
 - **Funcionalidades:**
@@ -161,7 +161,7 @@
   - Enrutamiento de tráfico a microservicios desplegados en AWS EKS.
   - Monitoreo y gestión de tráfico.
 
-#### AWS Elastic Kubernetes Service (EKS)
+### AWS Elastic Kubernetes Service (EKS)
 - **Descripción:**  
   AWS EKS es un servicio gestionado de Kubernetes que facilita el despliegue y la orquestación de contenedores.
 - **Funcionalidades:**  
@@ -169,28 +169,28 @@
   - Alta disponibilidad y gestión automatizada de clúster.
   - Integración con otros servicios de AWS (IAM, CloudWatch, etc.).
 
-#### AWS Managed Streaming for Apache Kafka (MSK)
+### AWS Managed Streaming for Apache Kafka (MSK)
 - **Descripción:**  
   AWS MSK es el servicio gestionado de Apache Kafka que facilita la transmisión y el procesamiento de eventos.
 - **Funcionalidades:**
   - Publicación y suscripción de eventos de forma asíncrona.
   - Alta disponibilidad y escalabilidad para la gestión de flujos de eventos.
   
-#### AWS Relational Database Service (RDS)
+### AWS Relational Database Service (RDS)
 - **Descripción:**  
   AWS RDS permite desplegar y administrar bases de datos relacionales (como MySQL) de forma gestionada.
 - **Funcionalidades:**
   - Soporte para alta disponibilidad, backups automáticos y escalabilidad.
   - Utilizado para el almacenamiento de datos de los microservicios de Autenticación y Planillas.
 
-#### AWS DocumentDB para MongoDB (Logs)
+### AWS DocumentDB para MongoDB (Logs)
 - **Descripción:**  
   AWS DocumentDB es un servicio gestionado compatible con MongoDB, ideal para almacenar grandes volúmenes de datos no estructurados, como logs y auditorías.
 - **Funcionalidades:**
   - Almacenamiento y consulta eficiente de logs.
   - Escalabilidad y alta disponibilidad para auditorías.
 
-#### AWS S3 Bucket (Almacenamiento)
+### AWS S3 Bucket (Almacenamiento)
 - **Descripción:**  
   AWS S3 es un servicio de almacenamiento de objetos que ofrece alta durabilidad y escalabilidad para archivos.
 - **Funcionalidades:**
@@ -204,7 +204,7 @@
 
 La solución propuesta aborda los problemas del sistema monolítico actual (lento durante altas demandas y difícil de escalar) mediante la migración a una arquitectura basada en microservicios.
 
-#### Contexto Actual
+### Contexto Actual
 El sistema de planillas actual es monolítico y presenta lentitud en épocas de alta demanda (quincenas, fin de mes, pago de aguinaldo) debido a la sobrecarga en un único proceso centralizado.
 
 **Desafíos:**  
@@ -212,7 +212,7 @@ El sistema de planillas actual es monolítico y presenta lentitud en épocas de 
   - Gestión compleja de las transacciones y del flujo de aprobación.
   - Riesgo de cuellos de botella y fallos en cascada.
 
-#### Objetivos de la Solución
+### Objetivos de la Solución
 
 - Permitir el escalado independiente de cada funcionalidad del sistema.
   
@@ -222,11 +222,11 @@ El sistema de planillas actual es monolítico y presenta lentitud en épocas de 
   
 - Registrar todos los eventos críticos para mejorar la seguridad y el seguimiento de procesos.
 
-#### Propuesta de Solución
+### Propuesta de Solución
 
 La solución se compone de la implementación de múltiples microservicios especializados, cada uno con responsabilidades definidas, y la integración de servicios gestionados de AWS. Esto permite una combinación de comunicación síncrona (vía REST) y asíncrona (mediante eventos en AWS MSK) para lograr una operación ágil y robusta.
 
-#### Arquitectura y Componentes Clave
+### Arquitectura y Componentes Clave
 
 **API Gateway con AWS API Gateway:**  
 - **Función:** Punto único de entrada que autentica, enruta y protege las solicitudes REST.
@@ -250,11 +250,11 @@ La solución se compone de la implementación de múltiples microservicios espec
 - **Servicio OAuth Externo:** Para la autenticación inicial y validación de tokens.
 - **Servicio Financiero Externo:** Para el cierre y procesamiento financiero de las planillas aprobadas.
 
-#### Diagrama de caso de uso
+### Diagrama de caso de uso
 
 ![Image](https://github.com/user-attachments/assets/aae13055-520c-445a-bee6-196baceb4058)
 
-#### Beneficios de la Solución
+### Beneficios de la Solución
 
 - Los microservicios independientes permiten escalar solo aquellos componentes con alta demanda, optimizando recursos y costos.
 
@@ -268,3 +268,79 @@ La solución se compone de la implementación de múltiples microservicios espec
 
 # Digramas ER (Entidad Relacion)
 
+### Base de Datos Microservicio Autenticacion
+
+Script .sql para la base de datos:
+
+    CREATE DATABASE IF NOT EXISTS AuthDB;
+    USE AuthDB;
+
+    CREATE TABLE Usuario (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      username VARCHAR(50) NOT NULL,
+      email VARCHAR(100) NOT NULL UNIQUE,
+      passwordHash VARCHAR(255) NOT NULL,
+      estado VARCHAR(20) NOT NULL
+    );
+
+    CREATE TABLE Rol (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombre VARCHAR(50) NOT NULL,
+      descripcion VARCHAR(255)
+    );
+
+    CREATE TABLE UsuarioRol (
+      usuarioId INT NOT NULL,
+      rolId INT NOT NULL,
+      PRIMARY KEY (usuarioId, rolId),
+      CONSTRAINT fk_usuario FOREIGN KEY (usuarioId) REFERENCES Usuario(id) ON DELETE CASCADE,
+      CONSTRAINT fk_rol FOREIGN KEY (rolId) REFERENCES Rol(id) ON DELETE CASCADE
+    );
+
+Diagrama Entidad Relacion:
+
+![Image](https://github.com/user-attachments/assets/ab741ca9-58bd-447b-9453-dc997845d788)
+
+### Base de Datos Microservicio Planillas
+
+Script .sql para la base de datos:
+
+    CREATE DATABASE IF NOT EXISTS PlanillasDB;
+    USE PlanillasDB;
+
+    CREATE TABLE Planilla (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      nombreArchivo VARCHAR(255) NOT NULL,
+      rutaArchivo VARCHAR(255) NOT NULL,
+      estadoAprobacion VARCHAR(20) NOT NULL,
+      fechaCreacion DATE NOT NULL,
+      fechaAprobacion DATE,
+      idUsuarioCreador INT NOT NULL
+    );
+
+    CREATE TABLE DetallePlanilla (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      planillaId INT NOT NULL,
+      campo1 VARCHAR(255),
+      campo2 VARCHAR(255),
+      -- Otros campos adicionales según la estructura del CSV se pueden agregar aquí
+      CONSTRAINT fk_planilla FOREIGN KEY (planillaId) REFERENCES Planilla(id) ON DELETE CASCADE
+    );
+
+Diagrama Entidad Relacion:
+
+![Image](https://github.com/user-attachments/assets/b7bd7e7c-47d8-4319-bac6-9d0e2e0b89f8)
+
+### Base de Datos Microservicio Logs
+
+Colección: LogEventos
+
+    _id: ObjectId (Primary Key)
+    fechaEvento: Date
+    tipoEvento: String
+    idUsuario: ObjectId o Number
+    descripcion: String
+
+Diagrama de la Coleccion:
+
+![Image](https://github.com/user-attachments/assets/dc0056d0-5814-49a3-9396-daa1d5d17b99)
