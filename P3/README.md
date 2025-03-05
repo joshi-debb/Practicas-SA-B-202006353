@@ -201,3 +201,70 @@
 ---
 
 # Descripción de la solución
+
+La solución propuesta aborda los problemas del sistema monolítico actual (lento durante altas demandas y difícil de escalar) mediante la migración a una arquitectura basada en microservicios.
+
+#### Contexto Actual
+El sistema de planillas actual es monolítico y presenta lentitud en épocas de alta demanda (quincenas, fin de mes, pago de aguinaldo) debido a la sobrecarga en un único proceso centralizado.
+
+**Desafíos:**  
+  - Dificultad para escalar y actualizar componentes de forma independiente.
+  - Gestión compleja de las transacciones y del flujo de aprobación.
+  - Riesgo de cuellos de botella y fallos en cascada.
+
+#### Objetivos de la Solución
+
+- Permitir el escalado independiente de cada funcionalidad del sistema.
+  
+- Facilitar la actualización de componentes sin afectar al sistema completo.
+  
+- Asegurar que un fallo en un componente no afecte el funcionamiento global mediante la separación de responsabilidades.
+  
+- Registrar todos los eventos críticos para mejorar la seguridad y el seguimiento de procesos.
+
+#### Propuesta de Solución
+
+La solución se compone de la implementación de múltiples microservicios especializados, cada uno con responsabilidades definidas, y la integración de servicios gestionados de AWS. Esto permite una combinación de comunicación síncrona (vía REST) y asíncrona (mediante eventos en AWS MSK) para lograr una operación ágil y robusta.
+
+#### Arquitectura y Componentes Clave
+
+**API Gateway con AWS API Gateway:**  
+- **Función:** Punto único de entrada que autentica, enruta y protege las solicitudes REST.
+- **Beneficio:** Centraliza la seguridad y permite la gestión y monitoreo de las APIs.
+
+**Microservicios Desplegados en AWS EKS:**  
+- Cada microservicio (Autenticación, Planillas, Almacenamiento, Notificaciones, Logs) se despliega de forma independiente en contenedores gestionados a través de AWS EKS, lo que permite escalabilidad y actualización independiente.
+
+**Comunicación Asíncrona con AWS MSK:**  
+- Se utiliza AWS Managed Streaming for Apache Kafka (MSK) para la publicación y suscripción de eventos críticos, como la aprobación de planillas.
+- **Beneficio:** Permite el procesamiento en segundo plano (por ejemplo, envío de notificaciones y registro de logs) sin afectar la respuesta inmediata a los usuarios.
+
+**Almacenamiento de Archivos con AWS S3:**  
+- Los archivos CSV se almacenan en AWS S3, garantizando alta durabilidad, disponibilidad y escalabilidad.
+
+**Persistencia de Datos con AWS RDS y AWS DocumentDB:**  
+- **AWS RDS (MySQL):** Utilizado por microservicios como Autenticación y Planillas para almacenar datos relacionales.
+- **AWS DocumentDB:** Se emplea para el microservicio de Logs, aprovechando su compatibilidad con MongoDB para gestionar grandes volúmenes de datos no estructurados.
+
+**Integración con Servicios Externos:**  
+- **Servicio OAuth Externo:** Para la autenticación inicial y validación de tokens.
+- **Servicio Financiero Externo:** Para el cierre y procesamiento financiero de las planillas aprobadas.
+
+#### Diagrama de caso de uso
+
+![Image](https://github.com/user-attachments/assets/aae13055-520c-445a-bee6-196baceb4058)
+
+#### Beneficios de la Solución
+
+- Los microservicios independientes permiten escalar solo aquellos componentes con alta demanda, optimizando recursos y costos.
+
+- La separación de componentes y la comunicación asíncrona a través de AWS MSK minimizan el impacto de fallos aislados.
+
+- La arquitectura modular permite realizar actualizaciones o cambios en un microservicio sin afectar a todo el sistema.
+
+- La utilización de tokens JWT y la centralización de logs en AWS DocumentDB aseguran un sistema seguro y fácilmente auditable.
+
+---
+
+# Digramas ER (Entidad Relacion)
+
