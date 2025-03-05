@@ -26,6 +26,8 @@ const Login = () => {
 
             const data = await response.json();
 
+            console.log('data', data);
+
             if (response.ok) {
                 swal("Éxito", "Inicio de sesión exitoso", "success");
                 navigate('/home');
