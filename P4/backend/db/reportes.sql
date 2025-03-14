@@ -1,0 +1,8 @@
+CREATE DATABASE reportes_db;
+USE reportes_db;
+
+CREATE TABLE reportes (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    tipo VARCHAR(255),
+    fecha TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
