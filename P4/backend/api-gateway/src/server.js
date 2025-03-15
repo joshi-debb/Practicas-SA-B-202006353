@@ -4,64 +4,63 @@ const { createProxyMiddleware } = require("http-proxy-middleware");
 const cors = require("cors");
 
 const app = express();
-app.use(cors({
-    origin: "*",
-    methods: "GET,POST,PUT,DELETE",
-    allowedHeaders: "Content-Type, Authorization"
-}));
-app.use(express.json());  // 🔹 Asegurar que el Gateway maneja JSON
-app.use(express.urlencoded({ extended: true }));
+app.use(cors(
+  {
+    origin: process.env.CORS_ORIGIN,
+    optionsSuccessStatus: 200
+  }
+));
+app.use(express.json());
 
-// Definir servicios
-const services = {
-    equipos: process.env.EQUIPOS_SERVICE,
-    ubicaciones: process.env.UBICACIONES_SERVICE,
-    mantenimiento: process.env.MANTENIMIENTO_SERVICE,
-    reportes: process.env.REPORTES_SERVICE
-};
-
-// Middleware REST para Equipos y Ubicaciones
-Object.keys(services).forEach(service => {
-    if (service !== "reportes" && service !== "mantenimiento") {
-        app.use(`/${service}`, createProxyMiddleware({
-            target: services[service],
-            changeOrigin: true
-        }));
-    }
-});
-
-// Middleware especial para GraphQL en Reportes y Mantenimiento
-app.use("/reportes/graphql", createProxyMiddleware({
-    target: services.reportes,
-    changeOrigin: true,
-    pathRewrite: { "/reportes/graphql": "/graphql" },
-    onProxyReq: (proxyReq, req) => {
-        if (req.body) {
-            let bodyData = JSON.stringify(req.body);
-            proxyReq.setHeader("Content-Type", "application/json");
-            proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
-            proxyReq.write(bodyData);
-        }
-    }
+// Proxy para rutas REST de Equipos
+app.use("/equipos", createProxyMiddleware({
+  target: 'http://localhost:8081',
+  changeOrigin: true,
+  logLevel: "debug", // Esto ayudará a ver en consola lo que ocurre
+  onError: (err, req, res) => {
+    console.error("Error proxy /equipos:", err);
+    res.status(500).send("Error proxy /equipos");
+  }
 }));
 
+// Proxy para rutas REST de Ubicaciones
+app.use("/ubicaciones", createProxyMiddleware({
+  target: 'http://localhost:8082',
+  changeOrigin: true,
+  logLevel: "debug",
+  onError: (err, req, res) => {
+    console.error("Error proxy /ubicaciones:", err);
+    res.status(500).send("Error proxy /ubicaciones");
+  }
+}));
+
+// Proxy para GraphQL en Mantenimiento
 app.use("/mantenimiento/graphql", createProxyMiddleware({
-    target: services.mantenimiento,
-    changeOrigin: true,
-    pathRewrite: { "/mantenimiento/graphql": "/graphql" },
-    onProxyReq: (proxyReq, req) => {
-        if (req.body) {
-            let bodyData = JSON.stringify(req.body);
-            proxyReq.setHeader("Content-Type", "application/json");
-            proxyReq.setHeader("Content-Length", Buffer.byteLength(bodyData));
-            proxyReq.write(bodyData);
-        }
-    }
+  target: 'http://localhost:8083',
+  changeOrigin: true,
+  pathRewrite: { "^/mantenimiento/graphql": "/graphql" },
+  logLevel: "debug",
+  onError: (err, req, res) => {
+    console.error("Error proxy /mantenimiento/graphql:", err);
+    res.status(500).json({ error: "Proxy error en mantenimiento", details: err.message });
+  }
 }));
 
+// Proxy para GraphQL en Reportes
+app.use("/reportes/graphql", createProxyMiddleware({
+  target: 'http://localhost:8084',
+  changeOrigin: true,
+  pathRewrite: { "^/reportes/graphql": "/graphql" },
+  logLevel: "debug",
+  onError: (err, req, res) => {
+    console.error("Error proxy /reportes/graphql:", err);
+    res.status(500).json({ error: "Proxy error en reportes", details: err.message });
+  }
+}));
+
+// Ruta raíz de prueba
 app.get("/", (req, res) => {
-    res.json({ mensaje: "API Gateway funcionando correctamente" });
+  res.json({ mensaje: "API Gateway funcionando correctamente" });
 });
 
-const PORT = process.env.PORT || 8080;
-app.listen(PORT, () => console.log(`API Gateway corriendo en puerto ${PORT}`));
+app.listen(8080, "0.0.0.0", () => console.log(`API Gateway corriendo en puerto ${8080}`));

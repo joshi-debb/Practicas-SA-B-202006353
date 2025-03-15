@@ -65,12 +65,20 @@ const root = {
 
 // Configurar Express con GraphQL
 const app = express();
-app.use(cors());
-app.use("/graphql", graphqlHTTP({
+app.use(cors(
+    {
+        origin: '*',
+        methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+        preflightContinue: false,
+        optionsSuccessStatus: 204
+    }
+));
+app.use("/", graphqlHTTP({
     schema,
     rootValue: root,
     graphiql: true
 }));
 
+// Iniciar servidor
 const PORT = process.env.PORT || 8083;
-app.listen(PORT, () => console.log(`Microservicio de Mantenimiento corriendo en puerto ${PORT}`));
+app.listen(PORT, "0.0.0.0", () => console.log(`Microservicio de Mantenimiento corriendo en puerto ${PORT}`));
