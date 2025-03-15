@@ -72,5 +72,5 @@ app.use("/graphql", graphqlHTTP({
     graphiql: true
 }));
 
-const PORT = process.env.PORT || 8081;
+const PORT = process.env.PORT || 8083;
 app.listen(PORT, () => console.log(`Microservicio de Mantenimiento corriendo en puerto ${PORT}`));
