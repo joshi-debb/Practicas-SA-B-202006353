@@ -2,22 +2,19 @@ import mysql.connector
 import os
 from dotenv import load_dotenv
 
-# Cargar variables de entorno
 load_dotenv()
 
-# Configuración de la base de datos
 db_config = {
     "host": os.getenv("DB_HOST"),
     "user": os.getenv("DB_USER"),
     "password": os.getenv("DB_PASSWORD"),
     "database": os.getenv("DB_NAME"),
+    "port": os.getenv("DB_PORT"),
 }
 
-# Conectar a MySQL
 def get_db_connection():
     return mysql.connector.connect(**db_config)
 
-# Funciones CRUD para ubicaciones
 def obtener_ubicaciones():
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)

@@ -3,7 +3,6 @@ from routes.ubicaciones import ubicaciones_bp
 
 app = Flask(__name__)
 
-# Registrar Blueprint de ubicaciones
 app.register_blueprint(ubicaciones_bp)
 
 if __name__ == "__main__":

@@ -16,6 +16,6 @@ CMD ["python", "src/server.py"]
 #docker push bekinggo/ubicaciones
 
 #docker network create my-network
-#docker run --name mysql-container --network my-network -e MYSQL_ROOT_PASSWORD=1234 -p 3306:3306 -d mysql:latest
-#docker run --name express-app --network my-network -p 8082:8082 -d bekinggo/ubicaciones
+#docker run --name mysql-container --network my-network -e MYSQL_ROOT_PASSWORD=1234 -p 3307:3306 -d mysql:latest
+#docker run --name ubicaciones-app --network my-network -e DB_HOST=mysql-container -e DB_USER=root -e DB_PASSWORD=1234 -e DB_NAME=ubicaciones_db -e DB_PORT=3306 -p 8082:8082 -d bekinggo/ubicaciones
 

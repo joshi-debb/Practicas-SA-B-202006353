@@ -16,5 +16,5 @@ CMD [ "node", "src/server.js" ]
 #docker push bekinggo/reportes
 
 #docker network create my-network
-#docker run --name mysql-container --network my-network -e MYSQL_ROOT_PASSWORD=1234 -p 3306:3306 -d mysql:latest
-#docker run --name express-app --network my-network -p 8084:8084 -d bekinggo/reportes
+#docker run --name mysql-container --network my-network -e MYSQL_ROOT_PASSWORD=1234 -p 3307:3306 -d mysql:latest
+#docker run --name reportes-app --network my-network -e DB_HOST=mysql-container -e DB_USER=root -e DB_PASSWORD=1234 -e DB_NAME=reportes_db -e DB_PORT=3306 -p 8084:8084 -d bekinggo/reportes

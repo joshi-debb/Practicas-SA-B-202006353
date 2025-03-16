@@ -10,7 +10,8 @@ const db = mysql.createPool({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
+    database: process.env.DB_NAME,
+    port: process.env.DB_PORT
 });
 
 
@@ -67,16 +68,13 @@ const root = {
     }
 };
 
-// Configurar Express con GraphQL
 const app = express();
-app.use(cors(
-    {
-        origin: '*',
-        methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
-        preflightContinue: false,
-        optionsSuccessStatus: 204
-    }
-));
+
+app.use(cors({
+    origin: "*",
+    methods: "GET,POST",
+    allowedHeaders: "Content-Type, Authorization"
+}));
 
 const graphqlHandler = createHandler({
     schema,
@@ -85,6 +83,5 @@ const graphqlHandler = createHandler({
 
 app.all("/", graphqlHandler);
 
-// Iniciar servidor
 const PORT = process.env.PORT || 8084;
 app.listen(PORT, "0.0.0.0", () => console.log(`Microservicio de Reportes corriendo en puerto ${PORT}`));

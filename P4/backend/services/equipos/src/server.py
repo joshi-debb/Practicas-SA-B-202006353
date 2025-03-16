@@ -5,7 +5,6 @@ from routes.equipos import equipos_bp
 app = Flask(__name__)
 CORS(app, resources={r"/*": {"origins": "*"}})
 
-# Registrar Blueprint de equipos
 app.register_blueprint(equipos_bp)
 
 if __name__ == "__main__":
