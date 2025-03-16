@@ -1,0 +1,21 @@
+FROM python:3.10-alpine
+
+WORKDIR /app
+
+COPY requirements.txt ./
+
+RUN pip install -r requirements.txt
+
+COPY . .
+
+EXPOSE 8082
+
+CMD ["python", "src/server.py"]
+
+#docker build -t bekinggo/ubicaciones .
+#docker push bekinggo/ubicaciones
+
+#docker network create my-network
+#docker run --name mysql-container --network my-network -e MYSQL_ROOT_PASSWORD=1234 -p 3306:3306 -d mysql:latest
+#docker run --name express-app --network my-network -p 8082:8082 -d bekinggo/ubicaciones
+

@@ -1,6 +1,6 @@
 require("dotenv").config();
 const express = require("express");
-const { graphqlHTTP } = require("express-graphql");
+const { createHandler } = require("graphql-http/lib/use/express");
 const { buildSchema } = require("graphql");
 const mysql = require("mysql2/promise");
 const cors = require("cors");
@@ -12,6 +12,7 @@ const db = mysql.createPool({
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME
 });
+
 
 // Esquema de GraphQL
 const schema = buildSchema(`
@@ -76,11 +77,13 @@ app.use(cors(
         optionsSuccessStatus: 204
     }
 ));
-app.use("/", graphqlHTTP({
+
+const graphqlHandler = createHandler({
     schema,
-    rootValue: root,
-    graphiql: true
-}));
+    rootValue: root
+});
+
+app.all("/", graphqlHandler);
 
 // Iniciar servidor
 const PORT = process.env.PORT || 8084;

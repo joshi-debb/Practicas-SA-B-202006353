@@ -1,0 +1,20 @@
+FROM node:20-alpine
+
+WORKDIR /app
+
+COPY package*.json ./
+
+RUN npm install 
+
+COPY . .
+
+EXPOSE 8083
+
+CMD [ "node", "src/server.js" ]
+
+#docker build -t bekinggo/mantenimiento .
+#docker push bekinggo/mantenimiento
+
+#docker network create my-network
+#docker run --name mysql-container --network my-network -e MYSQL_ROOT_PASSWORD=1234 -p 3306:3306 -d mysql:latest
+#docker run --name express-app --network my-network -p 8083:8083 -d bekinggo/mantenimiento
