@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mantenimiento
+  namespace: sa-p5
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mantenimiento
+  template:
+    metadata:
+      labels:
+        app: mantenimiento
+    spec:
+      containers:
+      - name: mantenimiento
+        image: bekinggo/mantenimiento
+        ports:
+        - containerPort: 8083
+        env:
+        - name: DB_HOST
+          value: "mysql"
+        - name: DB_USER
+          value: "root"
+        - name: DB_PASSWORD
+          value: "1234"
+        - name: DB_NAME
+          value: "mantenimiento_db"
+        - name: DB_PORT
+          value: "3306"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mantenimiento
+  namespace: sa-p5
+spec:
+  selector:
+    app: mantenimiento
+  ports:
+  - port: 8083
+    targetPort: 8083
+  type: ClusterIP
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: mantenimiento-autoscaler
+  namespace: sa-p5
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: mantenimiento
+  minReplicas: 1
+  maxReplicas: 2
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 80
