@@ -27,7 +27,7 @@ spec:
         - containerPort: 8081
         env:
         - name: DB_HOST
-          value: "mysql"
+          value: "mysql.sa-p5.svc.cluster.local"
         - name: DB_USER
           value: "root"
         - name: DB_PASSWORD

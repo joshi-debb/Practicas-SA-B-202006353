@@ -1,0 +1,26 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: registro-cronjob
+  namespace: sa-p5
+spec:
+  schedule: "*/2 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: registro-cronjob
+            image: bekinggo/cronjob:latest
+            env:
+            - name: DB_HOST
+              value: "mongodb.sa-p5.svc.cluster.local"
+            - name: DB_PORT
+              value: "27017"
+            - name: DB_NAME
+              value: "cronjob_db"
+            - name: DB_COLLECTION
+              value: "registros_cronjob"
+            - name: CARNE
+              value: "202006353"
+          restartPolicy: OnFailure

@@ -16,3 +16,10 @@ kubectl logs <pod> -n sa-p5
 
 Obtener informacion del estado de un pod
 kubectl describe pod <pod> -n sa-p5
+
+kubectl exec -it mongodb-745f6f5448-jhvvs -n sa-p5 -- sh
+mongosh
+show dbs
+use cronjob_db
+show collections
+db.registros_cronjob.find().pretty()
