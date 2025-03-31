@@ -28,11 +28,11 @@ spec:
         - containerPort: 8081
         env:
         - name: DB_HOST
-          value: "database-1.c7qcsa8iso3p.us-east-2.rds.amazonaws.com"
+          value: "sa-202006353-practicas.c7qcsa8iso3p.us-east-2.rds.amazonaws.com"
         - name: DB_USER
           value: "whyrds"
         - name: DB_PASSWORD
-          value: "KCKHEVGrkDddwBhQWrG9"
+          value: "KilW6kS53ukPsX2OaGfQ"
         - name: DB_NAME
           value: "equipos_db"
         - name: DB_PORT
