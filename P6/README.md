@@ -48,11 +48,17 @@ Recursos utilizados:
 
     gcloud init
     gcloud auth login
-    gcloud config set project <project-id> # <project-id> es el ID del proyecto de GCP
+    gcloud config set project awesome-icon-454901-t8 # <project-id> es el ID del proyecto de GCP
     gcloud config set compute/zone us-central1-b
     gcloud config set compute/region us-central1
+
+    # listar los clusters disponibles
+    gcloud container clusters list
+
+    # Conectar el cliente kubectl al cluster de GKE
+    gcloud container clusters get-credentials practica6-cluster --zone us-central1-b --project awesome-icon-454901-t8
     
-    gcloud container clusters get-credentials my-frist-cluster --zone us-central1
+    # Establecer el contexto de kubectl para el cluster
     kubectl config set-context --current --namespace=sa-p6
 
 ### Habilitar Artifact Registry
@@ -78,6 +84,8 @@ Recursos utilizados:
 ### Habilitar/Instalar Ingress via YAML (estático)
 
     kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.7.1/deploy/static/provider/cloud/deploy.yaml
+
+    kubectl get pods -n ingress-nginx --watch
 
 ---
 

@@ -18,11 +18,12 @@ spec:
         image: us-central1-docker.pkg.dev/awesome-icon-454901-t8/sa-p6/reportes:latest
         resources:
           requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
             memory: "128Mi"
             cpu: "250m"
-          limits:
-            memory: "256Mi"
-            cpu: "500m"
+            
         ports:
         - containerPort: 8084
         env:

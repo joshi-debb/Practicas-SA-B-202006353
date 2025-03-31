@@ -12,6 +12,13 @@ spec:
           containers:
           - name: registro-cronjob
             image: us-central1-docker.pkg.dev/awesome-icon-454901-t8/sa-p6/cronjob:latest
+            resources:
+              requests:
+                memory: "64Mi"
+                cpu: "100m"
+              limits:
+                memory: "128Mi"
+                cpu: "250m"
             env:
             - name: DB_HOST
               value: "database-1.c7qcsa8iso3p.us-east-2.rds.amazonaws.com"
