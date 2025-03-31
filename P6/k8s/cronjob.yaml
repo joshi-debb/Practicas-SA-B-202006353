@@ -1,0 +1,28 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: registro-cronjob
+  namespace: sa-p6
+spec:
+  schedule: "*/2 * * * *"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          containers:
+          - name: registro-cronjob
+            image: us-central1-docker.pkg.dev/awesome-icon-454901-t8/sa-p6/cronjob:latest
+            env:
+            - name: DB_HOST
+              value: "database-1.c7qcsa8iso3p.us-east-2.rds.amazonaws.com"
+            - name: DB_USER
+              value: "whyrds"
+            - name: DB_PASSWORD
+              value: "KCKHEVGrkDddwBhQWrG9"
+            - name: DB_NAME
+              value: "cronjob_db"
+            - name: DB_PORT
+              value: "3306"
+            - name: CARNE
+              value: "202006353"
+          restartPolicy: OnFailure

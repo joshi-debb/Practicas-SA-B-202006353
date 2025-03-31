@@ -9,6 +9,5 @@ COPY . .
 
 CMD ["python", "src/cronjob.py"]
 
-#docker build -t bekinggo/cronjob .
-#docker push bekinggo/cronjob
- 
+#docker build --platform=linux/amd64 -t us-central1-docker.pkg.dev/awesome-icon-454901-t8/sa-p6/cronjob:latest .
+#docker push us-central1-docker.pkg.dev/awesome-icon-454901-t8/sa-p6/cronjob:latest
