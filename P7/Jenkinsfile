@@ -18,14 +18,15 @@ pipeline {
             steps {
                 script {
                     withCredentials([file(credentialsId: 'gcp-access-token', variable: 'GCP_TOKEN_FILE')]) {
-                        bat """
-                        type %GCP_TOKEN_FILE% | docker login -u _json_key --password-stdin ${REGISTRY_URL}
-                        """
+                        bat "gcloud auth activate-service-account --key-file=${GCP_TOKEN_FILE}"
+                        bat "gcloud config set account sa-practicas@forward-fuze-456010-c2.iam.gserviceaccount.com"
+                        bat "gcloud config set project forward-fuze-456010-c2"
+                        bat "gcloud auth configure-docker us-central1-docker.pkg.dev"
                     }
                 }
             }
         }
-        
+
         stage('Build Images') {
             steps {
                 script {
@@ -40,44 +41,45 @@ pipeline {
                 }
             }
         }
-        
+
         stage('Test Images') {
             steps {
                 script {
-                    def services = ['equipos', 'mantenimiento', 'reportes', 'ubicaciones']
-                    services.each { service ->
-                        def servicePath = "./backend/services/${service}"
-                        def dockerfilePath = "${servicePath}/Dockerfile"
-                        def imageName = "${DOCKER_REGISTRY}/${service}-test:latest"
-                        echo "Construyendo imagen test para ${service}"
-                        docker.build(imageName, "-f ${dockerfilePath} ${servicePath}")
-                    }
+                    bat "docker run ${DOCKER_REGISTRY}/mantenimiento:latest npm test"
+                    bat "docker run ${DOCKER_REGISTRY}/reportes:latest npm test"
+                    bat "docker run ${DOCKER_REGISTRY}/equipos:latest python3 -m unittest discover"
+                    bat "docker run ${DOCKER_REGISTRY}/ubicaciones:latest python3 -m unittest discover"
                 }
             }
         }
-        
-        stage('Push Images') {
+
+        stage('Push Images'){
             steps {
                 script {
                     def services = ['equipos', 'mantenimiento', 'reportes', 'ubicaciones']
                     services.each { service ->
-                        def imageName = "${DOCKER_REGISTRY}/${service}:latest"
-                        echo "Enviando imagen para ${service}"
-                        docker.withRegistry("${REGISTRY_URL}", 'gcp-access-token') {
-                            docker.image(imageName).push()
+                        bat "docker push ${DOCKER_REGISTRY}/${service}:latest"
+                    }
+                }
+            }
+        }
+
+        stage('Deploy to KOPS cluster') {
+            steps {
+                withCredentials([file(credentialsId: 'kubeconfig-kops', variable: 'KUBECONFIG')]) {
+                    script {
+                        def services = ['equipos', 'mantenimiento', 'reportes', 'ubicaciones']
+                        services.each { service ->
+                            def imageName = "${DOCKER_REGISTRY}/${service}:latest"
+                            echo "Desplegando ${service} en KOPS Kubernetes"
+                            bat "kubectl set image deployment/${service} ${service}=${imageName} --namespace=${K8S_NAMESPACE}"
+                            bat "kubectl rollout status deployment/${service} --namespace=${K8S_NAMESPACE}"
                         }
+                        
+                        // bat "kubectl delete -f ./k8s/micro-servicios/. --namespace=${K8S_NAMESPACE} --ignore-not-found=true"
+                        // bat "kubectl apply -f ./k8s/micro-servicios/. --namespace=${K8S_NAMESPACE}"
+
                     }
-                }
-            }
-        }
-        
-        stage('Deploy to Kubernetes') {
-            steps {
-                script {
-                    echo "Desplegando en Kubernetes"
-                    sh "kubectl get namespaces"
-                    sh "kubectl config set-context --current --namespace=${K8S_NAMESPACE}"
-                    sh "kubectl get all -n ${K8S_NAMESPACE}"
                 }
             }
         }

@@ -22,8 +22,7 @@ spec:
             cpu: "100m"
           limits:
             memory: "128Mi"
-            cpu: "250m"
-            
+            cpu: "250m"  
         ports:
         - containerPort: 8081
         env:
@@ -37,7 +36,9 @@ spec:
           value: "equipos_db"
         - name: DB_PORT
           value: "3306"
-
+      imagePullSecrets:
+      - name: artifact-registry-creds
+      
 ---
 apiVersion: v1
 kind: Service

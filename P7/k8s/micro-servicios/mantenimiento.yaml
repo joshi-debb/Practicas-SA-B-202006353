@@ -23,7 +23,6 @@ spec:
           limits:
             memory: "128Mi"
             cpu: "250m"
-            
         ports:
         - containerPort: 8083
         env:
@@ -37,7 +36,9 @@ spec:
           value: "mantenimiento_db"
         - name: DB_PORT
           value: "3306"
-
+      imagePullSecrets:
+      - name: artifact-registry-creds
+      
 ---
 apiVersion: v1
 kind: Service

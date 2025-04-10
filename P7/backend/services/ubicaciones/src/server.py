@@ -1,5 +1,5 @@
 from flask import Flask
-from routes.ubicaciones import ubicaciones_bp
+from src.routes.ubicaciones import ubicaciones_bp
 
 app = Flask(__name__)
 

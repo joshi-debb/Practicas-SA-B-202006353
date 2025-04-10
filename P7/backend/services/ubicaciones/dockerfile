@@ -4,13 +4,13 @@ WORKDIR /app
 
 COPY requirements.txt ./
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install -r requirements.txt
 
 COPY . .
 
 EXPOSE 8082
 
-CMD ["python", "src/server.py"]
+CMD ["python", "-m", "src.server"]
 
-#docker build --platform=linux/amd64 -t us-central1-docker.pkg.dev/awesome-icon-454901-t8/sa-p6/ubicaciones:latest .
-#docker push us-central1-docker.pkg.dev/awesome-icon-454901-t8/sa-p6/ubicaciones:latest
+#docker build --platform=linux/amd64 -t us-central1-docker.pkg.dev/forward-fuze-456010-c2/sa-p7/ubicaciones:latest .
+#docker push us-central1-docker.pkg.dev/forward-fuze-456010-c2/sa-p7/ubicaciones:latest

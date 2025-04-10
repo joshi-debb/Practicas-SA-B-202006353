@@ -83,5 +83,11 @@ const graphqlHandler = createHandler({
 
 app.all("/reportes/", graphqlHandler);
 
-const PORT = process.env.PORT || 8084;
-app.listen(PORT, "0.0.0.0", () => console.log(`Microservicio de Reportes corriendo en puerto ${PORT}`));
+if (require.main === module) {
+    const PORT = process.env.PORT || 8084;
+    app.listen(PORT, "0.0.0.0", () =>
+      console.log(`Microservicio de Reportes corriendo en puerto ${PORT}`)
+    );
+  }
+  
+  module.exports = app;

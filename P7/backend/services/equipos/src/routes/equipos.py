@@ -1,5 +1,5 @@
 from flask import Blueprint, request, jsonify
-from connections.database import obtener_equipos, obtener_equipo_por_id, agregar_equipo, actualizar_equipo, eliminar_equipo
+from src.connections.database import obtener_equipos, obtener_equipo_por_id, agregar_equipo, actualizar_equipo, eliminar_equipo
 
 equipos_bp = Blueprint("equipos", __name__)
 

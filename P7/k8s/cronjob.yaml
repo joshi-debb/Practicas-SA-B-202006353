@@ -33,3 +33,5 @@ spec:
             - name: CARNE
               value: "202006353"
           restartPolicy: OnFailure
+          imagePullSecrets:
+            - name: artifact-registry-creds
