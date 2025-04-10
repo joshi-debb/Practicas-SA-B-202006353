@@ -1,0 +1,47 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-ingress
+  namespace: sa-p7
+  annotations:
+    nginx.ingress.kubernetes.io/target-type: ip
+    nginx.org/listen-ports: '[80]'
+    nginx.org/listen-ports-ssl: '[443]'
+    ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/service-upstream: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+  - http:
+      paths:
+      - path: /equipos
+        pathType: Prefix
+        backend:
+          service:
+            name: equipos
+            port:
+              number: 8081
+      
+      - path: /ubicaciones
+        pathType: Prefix
+        backend:
+          service:
+            name: ubicaciones
+            port:
+              number: 8082
+      
+      - path: /reportes
+        pathType: Prefix
+        backend:
+          service:
+            name: reportes
+            port:
+              number: 8084
+      
+      - path: /mantenimiento
+        pathType: Prefix
+        backend:
+          service:
+            name: mantenimiento
+            port:
+              number: 8083

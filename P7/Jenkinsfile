@@ -1,0 +1,91 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKER_REGISTRY = "us-central1-docker.pkg.dev/forward-fuze-456010-c2/sa-p7"
+        K8S_NAMESPACE = "sa-p7"
+        REGISTRY_URL = "https://us-central1-docker.pkg.dev"
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+        
+        stage('Login to Artifact Registry') {
+            steps {
+                script {
+                    withCredentials([file(credentialsId: 'gcp-access-token', variable: 'GCP_TOKEN_FILE')]) {
+                        bat """
+                        type %GCP_TOKEN_FILE% | docker login -u _json_key --password-stdin ${REGISTRY_URL}
+                        """
+                    }
+                }
+            }
+        }
+        
+        stage('Build Images') {
+            steps {
+                script {
+                    def services = ['equipos', 'mantenimiento', 'reportes', 'ubicaciones']
+                    services.each { service ->
+                        def servicePath = "./backend/services/${service}"
+                        def dockerfilePath = "${servicePath}/Dockerfile"
+                        def imageName = "${DOCKER_REGISTRY}/${service}:latest"
+                        echo "Construyendo imagen para ${service}"
+                        docker.build(imageName, "-f ${dockerfilePath} ${servicePath}")
+                    }
+                }
+            }
+        }
+        
+        stage('Test Images') {
+            steps {
+                script {
+                    def services = ['equipos', 'mantenimiento', 'reportes', 'ubicaciones']
+                    services.each { service ->
+                        def servicePath = "./backend/services/${service}"
+                        def dockerfilePath = "${servicePath}/Dockerfile"
+                        def imageName = "${DOCKER_REGISTRY}/${service}-test:latest"
+                        echo "Construyendo imagen test para ${service}"
+                        docker.build(imageName, "-f ${dockerfilePath} ${servicePath}")
+                    }
+                }
+            }
+        }
+        
+        stage('Push Images') {
+            steps {
+                script {
+                    def services = ['equipos', 'mantenimiento', 'reportes', 'ubicaciones']
+                    services.each { service ->
+                        def imageName = "${DOCKER_REGISTRY}/${service}:latest"
+                        echo "Enviando imagen para ${service}"
+                        docker.withRegistry("${REGISTRY_URL}", 'gcp-access-token') {
+                            docker.image(imageName).push()
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy to Kubernetes') {
+            steps {
+                script {
+                    echo "Desplegando en Kubernetes"
+                    sh "kubectl get namespaces"
+                    sh "kubectl config set-context --current --namespace=${K8S_NAMESPACE}"
+                    sh "kubectl get all -n ${K8S_NAMESPACE}"
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}
