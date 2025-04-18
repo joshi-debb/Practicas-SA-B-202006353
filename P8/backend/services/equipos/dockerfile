@@ -1,0 +1,16 @@
+FROM python:3.10-alpine
+
+WORKDIR /app
+
+COPY requirements.txt ./
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+EXPOSE 8081
+
+CMD ["python", "src/server.py"]
+
+#docker build --platform=linux/amd64 -t us-central1-docker.pkg.dev/forward-fuze-456010-c2/sa-p8/equipos:latest .
+#docker push us-central1-docker.pkg.dev/forward-fuze-456010-c2/sa-p8/equipos:latest
