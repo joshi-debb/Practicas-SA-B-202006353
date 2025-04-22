@@ -2,7 +2,7 @@ apiVersion: monitoring.googleapis.com/v1
 kind: Rules
 metadata:
   name: default-alerts
-  namespace: sa-p8
+  namespace: monitoring
 spec:
   groups:
   - name: resource-alerts

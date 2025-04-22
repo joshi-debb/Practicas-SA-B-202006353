@@ -1,0 +1,24 @@
+replicas: 1
+
+repository: docker.elastic.co/kibana/kibana
+tag: "8.6.2"
+pullPolicy: IfNotPresent
+
+elasticsearch:
+  hosts: ["https://elasticsearch-master:9200"]
+  username: "elastic"
+  password: "8bPm9bSwTHk0JqbE"
+  ssl:
+    verificationMode: none # ignora certificado autofirmado
+
+resources:
+  requests:
+    cpu:    "250m"
+    memory: "1Gi"
+  limits:
+    cpu:    "500m"
+    memory: "2Gi"
+
+service:
+  type: ClusterIP
+  port: 5601

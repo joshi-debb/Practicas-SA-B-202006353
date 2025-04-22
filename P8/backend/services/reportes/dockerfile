@@ -15,5 +15,5 @@ EXPOSE 8084
 
 CMD ["node", "src/server.js"]
 
-#docker build --platform=linux/amd64 -t us-central1-docker.pkg.dev/forward-fuze-456010-c2/sa-p8/reportes:latest .
-#docker push us-central1-docker.pkg.dev/forward-fuze-456010-c2/sa-p8/reportes:latest
+#docker build --platform=linux/amd64 -t us-central1-docker.pkg.dev/hallowed-key-458002-a1/sa-p8/reportes:latest .
+#docker push us-central1-docker.pkg.dev/hallowed-key-458002-a1/sa-p8/reportes:latest

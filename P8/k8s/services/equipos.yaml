@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mantenimiento
+  name: equipos
   namespace: sa-p8
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: mantenimiento
+      app: equipos
   template:
     metadata:
       labels:
-        app: mantenimiento
+        app: equipos
     spec:
       containers:
-      - name: mantenimiento
-        image: us-central1-docker.pkg.dev/forward-fuze-456010-c2/sa-p8/mantenimiento:latest
+      - name: equipos
+        image: us-central1-docker.pkg.dev/hallowed-key-458002-a1/sa-p8/equipos:latest
         resources:
           requests:
             memory: "64Mi"
@@ -25,7 +25,7 @@ spec:
             cpu: "250m"
         ports:
         - name: metrics
-          containerPort: 8083
+          containerPort: 8081
         env:
         - name: DB_HOST
           value: "sa-202006353-practicas.c7qcsa8iso3p.us-east-2.rds.amazonaws.com"
@@ -34,36 +34,35 @@ spec:
         - name: DB_PASSWORD
           value: "KilW6kS53ukPsX2OaGfQ"
         - name: DB_NAME
-          value: "mantenimiento_db"
+          value: "equipos_db"
         - name: DB_PORT
           value: "3306"
-
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: mantenimiento
+  name: equipos
   namespace: sa-p8
 spec:
   selector:
-    app: mantenimiento
+    app: equipos
   ports:
   - name: metrics
-    port: 8083
-    targetPort: 8083
+    port: 8081
+    targetPort: 8081
   type: ClusterIP
 
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: mantenimiento-autoscaler
+  name: equipos-autoscaler
   namespace: sa-p8
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: mantenimiento
+    name: equipos
   minReplicas: 1
   maxReplicas: 2
   metrics:
@@ -73,17 +72,17 @@ spec:
       target:
         type: Utilization
         averageUtilization: 80
-        
+
 ---
 apiVersion: monitoring.googleapis.com/v1
 kind: PodMonitoring
 metadata:
-  name: mantenimiento
+  name: equipos
   namespace: sa-p8
 spec:
   selector:
     matchLabels:
-      app: mantenimiento
+      app: equipos
   endpoints:
   - port: metrics
     path: /metrics

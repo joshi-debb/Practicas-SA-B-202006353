@@ -1,0 +1,70 @@
+
+config:
+  ls.java.opts: "-Xmx512m -Xms512m"
+
+replicas: 1
+
+repository: docker.elastic.co/logstash/logstash
+tag: "8.6.2"
+pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  ports:
+    - name: beats
+      port: 5044
+      targetPort: 5044
+    - name: http
+      port: 9600
+      targetPort: http
+
+logstashConfig:
+  logstash.yml: |
+    http.host: 0.0.0.0
+    xpack.monitoring.enabled: false
+
+logstashPipeline:
+  logstash.conf: |
+    input {
+      beats {
+        port => 5044
+      }
+    }
+    filter {
+      # Example: grok, mutate, etc.
+    }
+    output {
+      stdout { codec => rubydebug }
+      elasticsearch {
+        hosts => ["https://elasticsearch-master:9200"]
+        index => "logs-%{+YYYY.MM.dd}"
+        user => "elastic"
+        password => "${ELASTIC_PASSWORD}"
+        ssl => true
+        ssl_certificate_verification => false
+      }
+    }
+
+persistence:
+  enabled: true
+  volumeClaimTemplate:
+    accessModes: ["ReadWriteOnce"]
+    resources:
+      requests:
+        storage: 20Gi
+
+resources:
+  requests:
+    cpu:    "500m"
+    memory: "2Gi"
+  limits:
+    cpu:    "1"
+    memory: "4Gi"
+
+extraEnvs:
+  - name: ELASTIC_PASSWORD
+    value: "8bPm9bSwTHk0JqbE"
+  - name: LS_JAVA_OPTS
+    value: "-Xmx512m -Xms512m"
+
+updateStrategy: OnDelete

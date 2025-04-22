@@ -1,0 +1,74 @@
+daemonset:
+  enabled: true
+
+  # Esto aplica al Pod (no al container)
+  podSecurityContext:
+    runAsUser: 0
+    runAsGroup: 0
+    fsGroup: 0
+
+  # Esto aplica al Container
+  securityContext:
+    runAsUser: 0
+    runAsGroup: 0
+
+  extraVolumes:
+    - name: var-log-containers
+      hostPath:
+        path: /var/log/containers
+    - name: var-log-pods
+      hostPath:
+        path: /var/log/pods
+  extraVolumeMounts:
+    - name: var-log-containers
+      mountPath: /var/log/containers
+      readOnly: true
+    - name: var-log-pods
+      mountPath: /var/log/pods
+      readOnly: true
+
+filebeatConfig:
+  filebeat.yml: |
+    filebeat.inputs:
+      - type: log
+        enabled: true
+        paths:
+          - /var/log/containers/*.log
+          - /var/log/pods/*/*.log
+        symlinks: true
+        multiline:
+          pattern: '^[[:space:]]'
+          negate: false
+          match: after
+        processors:
+          - add_kubernetes_metadata:
+              in_cluster: true
+              host: ${NODE_NAME}
+              matchers:
+                - logs_path:
+                    logs_path: "/var/log/containers/"
+              default_indexers.enabled: false
+              default_matchers.enabled: false
+
+          - dissect:
+              tokenizer: '%{k8s.timestamp} %{+k8s.timestamp} %{k8s.stream} %{json_message}'
+              field: "message"
+              target_prefix: ""
+
+          - decode_json_fields:
+              fields: ["json_message"]
+              target: ""
+              overwrite_keys: true
+              process_array: false
+              max_depth: 1
+
+    output.logstash:
+      hosts: ["logstash-logstash.logging.svc.cluster.local:5044"]
+
+resources:
+  requests:
+    cpu:    "250m"
+    memory: "512Mi" 
+  limits:
+    cpu:    "500m"
+    memory: "1Gi"

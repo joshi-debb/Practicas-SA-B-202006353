@@ -5,17 +5,54 @@
 --- 
 ### ELK Stack
 
-Preparar el namespace `sa-p8`:
+Preparar el namespace logging:
 
 ```bash
-kubectl create namespace sa-p8
+kubectl create namespace logging
 ```
 
-Añadir repositorio de Helm:
+Añadir repositorio elastic desde Helm:
 
 ```bash
 helm repo add elastic https://helm.elastic.co
 helm repo update
+```
+
+> **NOTA:**
+> Importante deshabilitar el servicio de loggin de GKE para evitar sobrecarga de logs.
+> Una sobrecarga de logs causara un costo excesivo en la cuenta de GCP.
+
+```bash
+gcloud container clusters update sa-cluster-practica8 `
+  --zone us-central1-b `
+  --logging=SYSTEM `
+  --monitoring=SYSTEM
+```
+
+```bash
+gcloud container clusters describe sa-cluster-practica8 `
+  --zone us-central1-b `
+  --flatten=loggingConfig.componentConfig.enableComponents `
+  --format="value(loggingConfig.componentConfig.enableComponents)"
+```
+
+Verificar que el logging de GKE está deshabilitado:
+
+Observability > Logging > Logs Explorer
+
+```bash
+resource.type="k8s_container"
+```
+
+>**NOTA:**
+> No debes ver losg de container, solo los de sistema.
+
+Para excluir esos mismos logs y que no se ingesten nunca:
+
+Observability > Logging > Logs Router > Exclusions
+
+```yaml
+resource.type="k8s_container"
 ```
 
 Archivos de valores (.yaml):
@@ -23,7 +60,6 @@ Archivos de valores (.yaml):
 ```yaml
 # elasticsearch-values.yaml
 clusterName: "elasticsearch"
-nodeGroup: "master" 
 replicas: 1
 minimumMasterNodes: 1
 
@@ -50,65 +86,144 @@ testFramework:
 updateStrategy: OnDelete
 ```
 
+1. Desplegar Elasticsearch:
+
+```bash
+helm install elasticsearch elastic/elasticsearch -n logging -f .\k8s\logging\elasticsearch-values.yaml
+```
+
+2. Obtener la contraseña elastic
+
+```bash
+# read the base64‐encoded password from the k8s secret
+$b64 = kubectl get secret elasticsearch-master-credentials -n logging -o jsonpath='{.data.password}'
+
+# decode it
+$ElasticPwd  = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($b64))
+
+# show it (you should see something like z0NTVfiJhfIT70FY)
+Write-Output $ElasticPwd 
+```
+
+3. Comprobar que Elasticsearch está funcionando:
+```bash
+kubectl exec -it elasticsearch-master-0 -n logging -- `
+  curl -u elastic:$ElasticPwd -k https://localhost:9200/_cat/indices?v
+```
+
+> **NOTA:**
+> La contraseña de elasticsearch es la misma para Kibana y Logstash.
+
 ```yaml
 # filebeat-values.yaml
+daemonset:
+  enabled: true
+
+  # Esto aplica al Pod (no al container)
+  podSecurityContext:
+    runAsUser: 0
+    runAsGroup: 0
+    fsGroup: 0
+
+  # Esto aplica al Container
+  securityContext:
+    runAsUser: 0
+    runAsGroup: 0
+
+  extraVolumes:
+    - name: var-log-containers
+      hostPath:
+        path: /var/log/containers
+    - name: var-log-pods
+      hostPath:
+        path: /var/log/pods
+  extraVolumeMounts:
+    - name: var-log-containers
+      mountPath: /var/log/containers
+      readOnly: true
+    - name: var-log-pods
+      mountPath: /var/log/pods
+      readOnly: true
+
 filebeatConfig:
   filebeat.yml: |
     filebeat.inputs:
-      - type: container
+      - type: log
+        enabled: true
         paths:
           - /var/log/containers/*.log
+          - /var/log/pods/*/*.log
+        symlinks: true
+        multiline:
+          pattern: '^[[:space:]]'
+          negate: false
+          match: after
         processors:
           - add_kubernetes_metadata:
               in_cluster: true
+              host: ${NODE_NAME}
+              matchers:
+                - logs_path:
+                    logs_path: "/var/log/containers/"
+              default_indexers.enabled: false
+              default_matchers.enabled: false
+
+          - dissect:
+              tokenizer: '%{k8s.timestamp} %{+k8s.timestamp} %{k8s.stream} %{json_message}'
+              field: "message"
+              target_prefix: ""
+
+          - decode_json_fields:
+              fields: ["json_message"]
+              target: ""
+              overwrite_keys: true
+              process_array: false
+              max_depth: 1
 
     output.logstash:
-      hosts: ["logstash-logstash:5044"]
-
-daemonset:
-  enabled: true
-  securityContext:
-    runAsUser: 0
+      hosts: ["logstash-logstash.logging.svc.cluster.local:5044"]
 
 resources:
   requests:
     cpu:    "250m"
-    memory: "512Mi"
+    memory: "512Mi" 
   limits:
     cpu:    "500m"
     memory: "1Gi"
 ```
 
+1. Desplegar Filebeat:
+
+```bash
+helm install filebeat elastic/filebeat -n logging -f .\k8s\logging\filebeat-values.yaml
+```
+
 ```yaml
 # logstash-values.yaml
+
+config:
+  ls.java.opts: "-Xmx512m -Xms512m"
+
 replicas: 1
 
-image: "docker.elastic.co/logstash/logstash"
-imageTag: "8.6.2"
-imagePullPolicy: "IfNotPresent"
+repository: docker.elastic.co/logstash/logstash
+tag: "8.6.2"
+pullPolicy: IfNotPresent
 
 service:
   type: ClusterIP
   ports:
     - name: beats
       port: 5044
-      protocol: TCP
       targetPort: 5044
     - name: http
       port: 9600
-      protocol: TCP
       targetPort: http
-
-httpPort: 9600
-
-extraPorts:
-  - name: beats
-    containerPort: 5044
 
 logstashConfig:
   logstash.yml: |
     http.host: 0.0.0.0
-    xpack.sa-p8.enabled: false
+    xpack.monitoring.enabled: false
 
 logstashPipeline:
   logstash.conf: |
@@ -118,142 +233,123 @@ logstashPipeline:
       }
     }
     filter {
-      # tus filtros aquí
+      # Example: grok, mutate, etc.
     }
     output {
+      stdout { codec => rubydebug }
       elasticsearch {
-        hosts => ["http://elasticsearch-master:9200"]
+        hosts => ["https://elasticsearch-master:9200"]
         index => "logs-%{+YYYY.MM.dd}"
+        user => "elastic"
+        password => "${ELASTIC_PASSWORD}"
+        ssl => true
+        ssl_certificate_verification => false
       }
     }
 
 persistence:
   enabled: true
+  volumeClaimTemplate:
+    accessModes: ["ReadWriteOnce"]
+    resources:
+      requests:
+        storage: 20Gi
 
-volumeClaimTemplate:
-  accessModes: ["ReadWriteOnce"]
-  resources:
-    requests:
-      storage: 20Gi
+resources:
+  requests:
+    cpu:    "500m"
+    memory: "2Gi"
+  limits:
+    cpu:    "1"
+    memory: "4Gi"
+
+extraEnvs:
+  - name: ELASTIC_PASSWORD
+    value: "8bPm9bSwTHk0JqbE"
+  - name: LS_JAVA_OPTS
+    value: "-Xmx512m -Xms512m"
+
+updateStrategy: OnDelete
+```
+1. Desplegar Logstash:
+
+```bash
+helm install logstash elastic/logstash -n logging -f .\k8s\logging\logstash-values.yaml
+```
+
+2. Verificar que las env vars de Logstash están bien configuradas:
+
+```bash
+kubectl exec -it logstash-logstash-0 -n logging -- env | Select-String "ELASTIC_PASSWORD"
+kubectl exec -it logstash-logstash-0 -n logging -- env | Select-String "LS_JAVA_OPTS"
+```
+
+3. Probar la conexión de Filebeat a Logstash:
+
+```bash
+kubectl exec -it filebeat-filebeat-977pc -n logging -- filebeat test output -e
+```
+
+4. Verificar que Logstash está recibiendo eventos:
+
+```bash
+kubectl logs -f statefulset/logstash-logstash -n logging
+```
+
+5. Comprobar los indices en Elasticsearch:
+
+```bash
+kubectl exec -it elasticsearch-master-0 -n logging -- `
+  curl -u elastic:$ElasticPwd -k https://localhost:9200/_cat/indices?v
+```
+
+```yaml
+# kibana-values.yaml
+replicas: 1
+
+repository: docker.elastic.co/kibana/kibana
+tag: "8.6.2"
+pullPolicy: IfNotPresent
+
+elasticsearch:
+  hosts: ["https://elasticsearch-master:9200"]
+  username: "elastic"
+  password: "8bPm9bSwTHk0JqbE"
+  ssl:
+    verificationMode: none # ignora certificado autofirmado
 
 resources:
   requests:
     cpu:    "250m"
-    memory: "512Mi"
+    memory: "1Gi"
   limits:
     cpu:    "500m"
-    memory: "1Gi"
+    memory: "2Gi"
 
-updateStrategy: OnDelete
-```
-
-Generar los manifiestos finales con Helm y desplegar con kubectl:
-
-```bash
-helm template elasticsearch elastic/elasticsearch -n sa-p8 -f elk/elasticsearch-values.yaml  > elk/elasticsearch.yaml
-helm template logstash elastic/logstash -n sa-p8 -f elk/logstash-values.yaml > elk/logstash.yaml
-helm template filebeat elastic/filebeat -n sa-p8 -f elk/filebeat-values.yaml > elk/filebeat.yaml
-
-kubectl apply -n sa-p8 -f elk/elasticsearch.yaml
-kubectl apply -n sa-p8 -f elk/logstash.yaml
-kubectl apply -n sa-p8 -f elk/filebeat.yaml
-```
-
-#### Para Kibana se debe crear a mano el manifiesto de despliegue:
-
-```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: kibana
-  namespace: sa-p8
-  labels:
-    app: kibana
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: kibana
-  template:
-    metadata:
-      labels:
-        app: kibana
-    spec:
-      containers:
-        - name: kibana
-          image: docker.elastic.co/kibana/kibana:8.5.1
-          resources:
-            requests:
-              cpu:    "250m"
-              memory: "1Gi"
-            limits:
-              cpu:    "500m"
-              memory: "2Gi"
-          env:
-            - name: ELASTICSEARCH_HOSTS
-              value: "http://elasticsearch-master:9200"
-            - name: ELASTICSEARCH_SERVICEACCOUNT_TOKEN
-              valueFrom:
-                secretKeyRef:
-                  name: kibana-system-token
-                  key: token
-          ports:
-            - containerPort: 5601
-
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: kibana
-  namespace: sa-p8
-spec:
+service:
   type: ClusterIP
-  selector:
-    app: kibana
-  ports:
-    - port: 5601
-      targetPort: 5601
-      protocol: TCP
-      name: http
+  port: 5601
 ```
 
-Aplicar el manifiesto de Kibana:
+1. Desplegar Kibana:
 
 ```bash
-kubectl apply -n sa-p8 -f elk/kibana.yaml
+helm install kibana elastic/kibana -n logging -f .\k8s\logging\kibana-values.yaml
 ```
+
+2. Exponer Kibana localmente:
+
+```bash
+kubectl port-forward svc/kibana-kibana 5601:5601 -n logging
+```
+
+> En el navegador: http://localhost:5601
+> Usuario: elastic
+> Contraseña: 8bPm9bSwTHk0JqbE
 
 > **NOTA:**
-> Para Kibana se debe crear un `secret` con las credenciales de acceso a Elasticsearch.
+> La contraseña de elasticsearch es la misma para Kibana y Logstash.
 
-
-
-Generar el token dentro del pod de ES
-
-```bash
-kubectl exec -it elasticsearch-master-0 -n sa-p8 -- bash
-
-cd /usr/share/elasticsearch
-
-bin/elasticsearch-service-tokens create elastic/kibana k8s-token
-```
-
-Utilizar el SERVICE TOKEN generado para crear el `secret`:
-    
-```bash
-kubectl -n sa-p8 create secret generic kibana-system-token --from-literal=token="AAEAAWVsYXN0aWMva2liYW5hL2s4cy10b2tlbjplMTRqalR6Q1JkQzlkTmgyendUVV93"
-```
-
-Forzar el reinicio de Kibana para que tome el nuevo token:
-
-```bash
-kubectl rollout restart deployment kibana -n sa-p8
-```
-
-Revisar que el pod esta en estado READY:
-```bash
-kubectl get pods -n sa-p8
-```
 
 ---
 
@@ -263,7 +359,7 @@ Habilita MSP en tu clúster:
 
 ```bash
 # Seleccionar el proyecto de GCP
-gcloud config set project forward-fuze-456010-c2
+gcloud config set project hallowed-key-458002
 
 # Clúster zonal
 gcloud container clusters update sa-cluster-practica8 --zone us-central1-b --enable-managed-prometheus
@@ -316,10 +412,10 @@ Despliegue de Grafana
 > El despliegue de Grafana es mejor hacerlo segun la documentacion oficial.
 > https://grafana.com/docs/grafana/latest/setup-grafana/installation/kubernetes/
 
-Crear el namespace `grafana`:
+Crear el namespace `monitoring`:
 
 ```bash
-kubectl create namespace sa-p8
+kubectl create namespace monitoring
 ```
 
 Crear el archivo de despliegue `grafana.yaml`:
@@ -452,23 +548,23 @@ value: "false"
 Aplicar el manifiesto de Grafana:
 
 ```bash
-kubectl apply -f grafana.yaml -n sa-p8
+kubectl apply -f grafana.yaml -n monitoring
 ```
 
 Revisar que el pod de Grafana esté en estado `Running`:
 
 ```bash
-kubectl get pods -n sa-p8
+kubectl get pods -n monitoring
 ```
 
-Agregar el podsa-p8 a cada uno de los pods que se quieran monitorear:
+Agregar el pod monitoring a cada uno de los pods que se quieran monitorear:
 
 ```yaml
-apiVersion: sa-p8.googleapis.com/v1
-kind: Podsa-p8
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
 metadata:
   name: equipos
-  namespace: sa-p8
+  namespace: monitoring
 spec:
   selector:
     matchLabels:
@@ -481,7 +577,7 @@ spec:
 
 Consultar la IP externa de Grafana:
 ```bash
-kubectl get svc -n sa-p8
+kubectl get svc -n monitoring
 ```
 
 Acceder a Grafana en el navegador:
@@ -501,7 +597,7 @@ http://prometheus-operated.gmp-system.svc.cluster.local:9090
 ```
 ---
 
-## Agregar visualizaciones y paneles:
+## Dashboard de Grafana:
 
 Grafana > Dashboards > New Dashboard > Add new panel
 
@@ -720,4 +816,70 @@ kubectl -n sa-p8 scale deployment equipos --replicas=1
 ```
 ---
 
-## Logging
+## Dashboard de Kibana:
+Kibana > Dashboard > Create new dashboard > Add new panel
+
+> **NOTA:**
+> Crear un índice en Kibana para poder visualizar los logs de Elasticsearch.
+> Se deberia usar logs-*, pero se puede usar el nombre del índice que se desee.
+
+## Visualizaciones
+
+### A. Tráfico de Peticiones  
+- **Tipo**: Line chart  
+- **Eje X**: `@timestamp` (intervalos de 1 min)  
+- **Eje Y**: Conteo de documentos  
+- **Split series**: `service.keyword`
+
+### B. Latencia (Percentiles)  
+- **Tipo**: Percentile  
+- **Campo**: `response_time_ms` (o tu métrica de latencia)  
+- Percentiles: p50, p90, p99  
+- **Eje X**: `@timestamp`
+
+### C. Tasa de Errores  
+- **Tipo**: Line chart  
+- **Eje Y**: Conteo de documentos filtrados por `levelname: ERROR`
+- **Split series**: `service.keyword`
+
+### D. Distribución de Niveles de Log  
+- **Tipo**: Pie chart  
+- **Slice by**: `levelname.keyword`
+
+### E. Top Endpoints Más Invocados  
+- **Tipo**: Bar chart  
+- **X-axis**: `url.keyword` (o ruta)  
+- **Y-axis**: Conteo de documentos
+
+### F. Tabla de Últimos Errores  
+- **Tipo**: Data Table  
+- **Rows**:  
+- `message.keyword` (solo ERROR)  
+- **Columns**:  
+- `@timestamp`  
+- `request_id`  
+
+### G. Tabla de logs recientes
+- **Tipo**: Data Table
+- **Rows**:
+- `@timestamp`
+- `service`
+- `levelname`
+- `request_id`
+- `message`
+- **Columns**:
+- `@timestamp` (ordenar por @timestamp descendente)
+
+### H. Top 5 endpoints o mensajes más frecuentes
+- **Tipo**: Bar chart
+- **X-axis**: `message.keyword`
+- **Metrics**: Conteo de documentos
+- **Size**: 5
+
+#### I. Distribución por nivel (INFO, ERROR, etc.)
+- **Tipo**: Pie chart
+- **Metrics**: Conteo de documentos
+- **X-axis**: `levelname.keyword` 
+- **Size**: 5
+
+

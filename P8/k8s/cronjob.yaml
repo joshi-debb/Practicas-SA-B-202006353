@@ -11,7 +11,7 @@ spec:
         spec:
           containers:
           - name: registro-cronjob
-            image: us-central1-docker.pkg.dev/forward-fuze-456010-c2/sa-p8/cronjob:latest
+            image: us-central1-docker.pkg.dev/hallowed-key-458002-a1/sa-p8/cronjob:latest
             resources:
               requests:
                 memory: "64Mi"

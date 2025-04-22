@@ -1,21 +1,21 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: ubicaciones
+  name: reportes
   namespace: sa-p8
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: ubicaciones
+      app: reportes
   template:
     metadata:
       labels:
-        app: ubicaciones
+        app: reportes
     spec:
       containers:
-      - name: ubicaciones
-        image: us-central1-docker.pkg.dev/forward-fuze-456010-c2/sa-p8/ubicaciones:latest
+      - name: reportes
+        image: us-central1-docker.pkg.dev/hallowed-key-458002-a1/sa-p8/reportes:latest
         resources:
           requests:
             memory: "64Mi"
@@ -25,7 +25,7 @@ spec:
             cpu: "250m"
         ports:
         - name: metrics
-          containerPort: 8082
+          containerPort: 8084
         env:
         - name: DB_HOST
           value: "sa-202006353-practicas.c7qcsa8iso3p.us-east-2.rds.amazonaws.com"
@@ -34,7 +34,7 @@ spec:
         - name: DB_PASSWORD
           value: "KilW6kS53ukPsX2OaGfQ"
         - name: DB_NAME
-          value: "ubicaciones_db"
+          value: "reportes_db"
         - name: DB_PORT
           value: "3306"
 
@@ -42,28 +42,28 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: ubicaciones
+  name: reportes
   namespace: sa-p8
 spec:
   selector:
-    app: ubicaciones
+    app: reportes
   ports:
   - name: metrics
-    port: 8082
-    targetPort: 8082
+    port: 8084
+    targetPort: 8084
   type: ClusterIP
 
 ---
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: ubicaciones-autoscaler
+  name: reportes-autoscaler
   namespace: sa-p8
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: ubicaciones
+    name: reportes
   minReplicas: 1
   maxReplicas: 2
   metrics:
@@ -78,12 +78,12 @@ spec:
 apiVersion: monitoring.googleapis.com/v1
 kind: PodMonitoring
 metadata:
-  name: ubicaciones
+  name: reportes
   namespace: sa-p8
 spec:
   selector:
     matchLabels:
-      app: ubicaciones
+      app: reportes
   endpoints:
   - port: metrics
     path: /metrics
