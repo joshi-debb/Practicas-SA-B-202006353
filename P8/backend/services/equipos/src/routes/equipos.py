@@ -1,30 +1,50 @@
+import logging
 from flask import Blueprint, request, jsonify
-from connections.database import obtener_equipos, obtener_equipo_por_id, agregar_equipo, actualizar_equipo, eliminar_equipo
+from connections.database import (
+    obtener_equipos,
+    obtener_equipo_por_id,
+    agregar_equipo,
+    actualizar_equipo,
+    eliminar_equipo
+)
 
+logger = logging.getLogger(__name__)
 equipos_bp = Blueprint("equipos", __name__)
 
-# Obtener todos los equipos o un equipo por ID
 @equipos_bp.route("/equipos/", methods=["GET"])
 @equipos_bp.route("/equipos/<int:id>", methods=["GET"])
 def obtener(id=None):
+    logger.info("GET /equipos/, id=%s", id)
     if id:
         equipo = obtener_equipo_por_id(id)
-        return jsonify(equipo if equipo else {"mensaje": "Equipo no encontrado"})
-    return jsonify(obtener_equipos())
+        if not equipo:
+            logger.warning("Equipo no encontrado, id=%s", id)
+            return jsonify({"mensaje": "Equipo no encontrado"}), 404
+        return jsonify(equipo)
+    lista = obtener_equipos()
+    logger.info("Se obtuvieron %d equipos", len(lista))
+    return jsonify(lista)
 
-# Agregar un nuevo equipo
 @equipos_bp.route("/equipos/", methods=["POST"])
 def agregar():
     data = request.get_json()
-    return jsonify(agregar_equipo(data["nombre"], data["tipo"], data["estado"], data["ubicacion"]))
+    logger.info("POST /equipos/ payload=%s", data)
+    result = agregar_equipo(
+        data["nombre"], data["tipo"], data["estado"], data["ubicacion"]
+    )
+    return jsonify(result), 201
 
-# Actualizar un equipo
 @equipos_bp.route("/equipos/<int:id>", methods=["PUT"])
 def actualizar(id):
     data = request.get_json()
-    return jsonify(actualizar_equipo(id, data["nombre"], data["tipo"], data["estado"], data["ubicacion"]))
+    logger.info("PUT /equipos/%s payload=%s", id, data)
+    result = actualizar_equipo(
+        id, data["nombre"], data["tipo"], data["estado"], data["ubicacion"]
+    )
+    return jsonify(result)
 
-# Eliminar un equipo
 @equipos_bp.route("/equipos/<int:id>", methods=["DELETE"])
 def eliminar(id):
-    return jsonify(eliminar_equipo(id))
+    logger.info("DELETE /equipos/%s", id)
+    result = eliminar_equipo(id)
+    return jsonify(result)
