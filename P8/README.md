@@ -1,176 +1,723 @@
-# Documentación - Práctica 6
+# Documentación - Práctica 8
 
-## Solucion Arquitectónica multi-cloud
-He dicido implementar una solución arquitectónica multi-cloud utilizando Google Cloud Platform (GCP) y Amazon Web Services (AWS). La arquitectura se basa en la implementación de un clúster de Kubernetes en GCP y el despliegue de los 4 microservicios de aplicación en contenedores. Cada aplicacion se conecta a una base de datos alojada en AWS, lo que permite aprovechar las capacidades de ambas plataformas.
-
-He elegido Google Cloud Platform (GCP) como principal plataforma de nube para orquestar mis contenedores con Google Kubernetes Engine (GKE). GCP ofrece un entorno altamente escalable, con integraciones nativas (como Artifact Registry para las imágenes de contenedor).
-
-AWS se utiliza para alojar las bases de datos, aprovechando su robustez y confiabilidad en el manejo de datos. La comunicación entre los microservicios y las bases de datos se realiza a través de conexiones seguras, garantizando la integridad y confidencialidad de los datos.
-
-### Servicios Utilizados en la Solución
-
-#### Google Kubernetes Engine (GKE)
-Servicio de orquestación de contenedores que permite desplegar aplicaciones en un clúster administrado de Kubernetes.
-- Función: Ejecutar los pods con nuestras aplicaciones (equipos, ubicaciones, reportes, mantenimiento).
-- Ventajas: Manejo automático de actualización de nodos, alta disponibilidad, y escalado sencillo.
-
-#### Amazon RDS
-Servicio de bases de datos relacionales en AWS.
-- Función: Alojar la base de datos (MySQL, PostgreSQL, etc.) con la que se conecta la aplicación.
-- Ventajas: Escalado de capacidad, respaldo automático, y alta disponibilidad.
-
-#### Artifact Registry (GCP)
-Registro privado para almacenar imágenes de contenedor (Docker u OCI).
-- Función: Almacenar y versionar nuestras imágenes Docker de forma segura.
-- Ventajas: Integración nativa con GKE, control de acceso mediante IAM.
-
-#### Kubernetes (en GKE)
-Recursos utilizados:
-- Deployments: Administran los pods y sus actualizaciones.
-- Services: Exponen los puertos internos o externos.
-- Ingress (con NGINX): Gestiona rutas HTTP/HTTPS entrantes.
-- HPA: Escalado horizontal de pods según métricas de carga.
+## Instalación y Configuración
 
 --- 
+### ELK Stack
 
-### Instalar el cliente gcloud CLI
+Preparar el namespace `sa-p8`:
 
-    (New-Object Net.WebClient).DownloadFile("https://dl.google.com/dl/cloudsdk/channels/rapid/GoogleCloudSDKInstaller.exe", "$env:Temp\GoogleCloudSDKInstaller.exe")
-    & $env:Temp\GoogleCloudSDKInstaller.exe
+```bash
+kubectl create namespace sa-p8
+```
 
-### Habilitar el API de Kubernetes Engine
+Añadir repositorio de Helm:
+
+```bash
+helm repo add elastic https://helm.elastic.co
+helm repo update
+```
+
+Archivos de valores (.yaml):
+
+```yaml
+# elasticsearch-values.yaml
+clusterName: "elasticsearch"
+nodeGroup: "master" 
+replicas: 1
+minimumMasterNodes: 1
+
+resources:
+  requests:
+    cpu:    "250m"
+    memory: "2Gi"
+  limits:
+    cpu:    "500m"
+    memory: "4Gi"
+
+volumeClaimTemplate:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 20Gi
+
+persistence:
+  enabled: true
+
+testFramework:
+  enabled: false
+
+updateStrategy: OnDelete
+```
+
+```yaml
+# filebeat-values.yaml
+filebeatConfig:
+  filebeat.yml: |
+    filebeat.inputs:
+      - type: container
+        paths:
+          - /var/log/containers/*.log
+        processors:
+          - add_kubernetes_metadata:
+              in_cluster: true
+
+    output.logstash:
+      hosts: ["logstash-logstash:5044"]
+
+daemonset:
+  enabled: true
+  securityContext:
+    runAsUser: 0
+
+resources:
+  requests:
+    cpu:    "250m"
+    memory: "512Mi"
+  limits:
+    cpu:    "500m"
+    memory: "1Gi"
+```
+
+```yaml
+# logstash-values.yaml
+replicas: 1
+
+image: "docker.elastic.co/logstash/logstash"
+imageTag: "8.6.2"
+imagePullPolicy: "IfNotPresent"
+
+service:
+  type: ClusterIP
+  ports:
+    - name: beats
+      port: 5044
+      protocol: TCP
+      targetPort: 5044
+    - name: http
+      port: 9600
+      protocol: TCP
+      targetPort: http
+
+httpPort: 9600
+
+extraPorts:
+  - name: beats
+    containerPort: 5044
+
+logstashConfig:
+  logstash.yml: |
+    http.host: 0.0.0.0
+    xpack.sa-p8.enabled: false
+
+logstashPipeline:
+  logstash.conf: |
+    input {
+      beats {
+        port => 5044
+      }
+    }
+    filter {
+      # tus filtros aquí
+    }
+    output {
+      elasticsearch {
+        hosts => ["http://elasticsearch-master:9200"]
+        index => "logs-%{+YYYY.MM.dd}"
+      }
+    }
+
+persistence:
+  enabled: true
+
+volumeClaimTemplate:
+  accessModes: ["ReadWriteOnce"]
+  resources:
+    requests:
+      storage: 20Gi
+
+resources:
+  requests:
+    cpu:    "250m"
+    memory: "512Mi"
+  limits:
+    cpu:    "500m"
+    memory: "1Gi"
+
+updateStrategy: OnDelete
+```
+
+Generar los manifiestos finales con Helm y desplegar con kubectl:
+
+```bash
+helm template elasticsearch elastic/elasticsearch -n sa-p8 -f elk/elasticsearch-values.yaml  > elk/elasticsearch.yaml
+helm template logstash elastic/logstash -n sa-p8 -f elk/logstash-values.yaml > elk/logstash.yaml
+helm template filebeat elastic/filebeat -n sa-p8 -f elk/filebeat-values.yaml > elk/filebeat.yaml
+
+kubectl apply -n sa-p8 -f elk/elasticsearch.yaml
+kubectl apply -n sa-p8 -f elk/logstash.yaml
+kubectl apply -n sa-p8 -f elk/filebeat.yaml
+```
+
+#### Para Kibana se debe crear a mano el manifiesto de despliegue:
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kibana
+  namespace: sa-p8
+  labels:
+    app: kibana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kibana
+  template:
+    metadata:
+      labels:
+        app: kibana
+    spec:
+      containers:
+        - name: kibana
+          image: docker.elastic.co/kibana/kibana:8.5.1
+          resources:
+            requests:
+              cpu:    "250m"
+              memory: "1Gi"
+            limits:
+              cpu:    "500m"
+              memory: "2Gi"
+          env:
+            - name: ELASTICSEARCH_HOSTS
+              value: "http://elasticsearch-master:9200"
+            - name: ELASTICSEARCH_SERVICEACCOUNT_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: kibana-system-token
+                  key: token
+          ports:
+            - containerPort: 5601
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kibana
+  namespace: sa-p8
+spec:
+  type: ClusterIP
+  selector:
+    app: kibana
+  ports:
+    - port: 5601
+      targetPort: 5601
+      protocol: TCP
+      name: http
+```
+
+Aplicar el manifiesto de Kibana:
+
+```bash
+kubectl apply -n sa-p8 -f elk/kibana.yaml
+```
+
+> **NOTA:**
+> Para Kibana se debe crear un `secret` con las credenciales de acceso a Elasticsearch.
+
+
+
+Generar el token dentro del pod de ES
+
+```bash
+kubectl exec -it elasticsearch-master-0 -n sa-p8 -- bash
+
+cd /usr/share/elasticsearch
+
+bin/elasticsearch-service-tokens create elastic/kibana k8s-token
+```
+
+Utilizar el SERVICE TOKEN generado para crear el `secret`:
     
-    gcloud services enable container.googleapis.com
+```bash
+kubectl -n sa-p8 create secret generic kibana-system-token --from-literal=token="AAEAAWVsYXN0aWMva2liYW5hL2s4cy10b2tlbjplMTRqalR6Q1JkQzlkTmgyendUVV93"
+```
 
-### Instalar kubectl y configurar el acceso al cluster
+Forzar el reinicio de Kibana para que tome el nuevo token:
 
-    gcloud components install kubectl
+```bash
+kubectl rollout restart deployment kibana -n sa-p8
+```
 
-    gcloud init
-    gcloud auth login
-    gcloud config set project awesome-icon-454901-t8 # <project-id> es el ID del proyecto de GCP
-    gcloud config set compute/zone us-central1-b
-    gcloud config set compute/region us-central1
-
-    # listar los clusters disponibles
-    gcloud container clusters list
-
-    # Conectar el cliente kubectl al cluster de GKE
-    gcloud container clusters get-credentials practica6-cluster --zone us-central1-b --project awesome-icon-454901-t8
-    
-    # Establecer el contexto de kubectl para el cluster
-    kubectl config set-context --current --namespace=sa-p6
-
-### Habilitar Artifact Registry
-
-    gcloud services enable artifactregistry.googleapis.com
-
-    - Crear un repositorio de Docker
-        gcloud artifacts repositories create sa-p6 --repository-format=docker --location=us-central1 --description="sa-p6 repository"
-
-    - Autenticar la máquina local con Artifact Registry
-        gcloud auth configure-docker us-central1-docker.pkg.dev
-
-    - Construir y subir la imagen de Docker
-        docker build -t us-central1-docker.pkg.dev/awesome-icon-454901-t8/sa-p6/equipo:latest .
-        docker push us-central1-docker.pkg.dev/awesome-icon-454901-t8/sa-p6/equipo:latest
-
-    - Verificar las imágenes subidas
-        gcloud artifacts docker images list us-central1-docker.pkg.dev/awesome-icon-454901-t8/sa-p6
-
-    - Elimina una imagen con un tag específico:
-        gcloud artifacts docker images delete us-central1-docker.pkg.dev/awesome-icon-454901-t8/sa-p6/equipo:latest --force-delete-tags --quiet
-    
-### Habilitar/Instalar Ingress via YAML (estático)
-
-    kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.7.1/deploy/static/provider/cloud/deploy.yaml
-
-    kubectl get pods -n ingress-nginx --watch
+Revisar que el pod esta en estado READY:
+```bash
+kubectl get pods -n sa-p8
+```
 
 ---
 
-## Diagrama de Arquitectura (Multi-Cloud Architecture)
+## Prometheus y Grafana
 
-![Image](https://github.com/user-attachments/assets/4a807c69-08df-4a88-9250-ecaef9ba6678)
+Habilita MSP en tu clúster:
 
+```bash
+# Seleccionar el proyecto de GCP
+gcloud config set project forward-fuze-456010-c2
+
+# Clúster zonal
+gcloud container clusters update sa-cluster-practica8 --zone us-central1-b --enable-managed-prometheus
+
+# (o) clúster regional
+gcloud container clusters update <CLUSTER_NAME> --region <REGION> --enable-managed-prometheus
+```
+
+> **NOTA:** 
+> GKE 1.27+ lo trae habilitado por defecto; el comando lo activa si está apagado.
+
+Revisar que el MSP está habilitado:
+
+```bash
+kubectl get pods -n gmp-system
+```
+
+Habilitar el collector-service en el namespace `gmp-system`:
+
+```yaml
+# collector-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-operated
+  namespace: gmp-system
+spec:
+  selector:
+    app.kubernetes.io/name: collector
+  ports:
+  - name: web
+    port: 9090           # Grafana usará este puerto “standard”
+    targetPort: 19090    # mapea al puerto real del contenedor
+```
+
+```bash
+kubectl apply -f collector-service.yaml -n gmp-system
+```
+
+Revisar que el servicio está funcionando:
+
+```bash
+kubectl -n gmp-system port-forward svc/prometheus-operated 9090:9090 --address 0.0.0.0
+Invoke-WebRequest http://localhost:9090/metrics -UseBasicParsing | Select-Object -First 5
+```
+
+Despliegue de Grafana
+
+> **NOTA:**
+> El despliegue de Grafana es mejor hacerlo segun la documentacion oficial.
+> https://grafana.com/docs/grafana/latest/setup-grafana/installation/kubernetes/
+
+Crear el namespace `grafana`:
+
+```bash
+kubectl create namespace sa-p8
+```
+
+Crear el archivo de despliegue `grafana.yaml`:
+
+```yaml
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: grafana-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: grafana
+  name: grafana
+spec:
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      securityContext:
+        fsGroup: 472
+        supplementalGroups:
+          - 0
+      containers:
+        - name: grafana
+          image: grafana/grafana:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 3000
+              name: http-grafana
+              protocol: TCP
+          env:
+          - name: GF_SMTP_ENABLED
+            value: "true"
+          - name: GF_SMTP_HOST
+            value: "smtp.gmail.com:587"
+          - name: GF_SMTP_USER
+            value: "mym.jayjay@gmail.com"
+          - name: GF_SMTP_PASSWORD
+            value: "qgdpioekliemtxbd"
+          - name: GF_SMTP_FROM_ADDRESS
+            value: "mym.jayjay@gmail.com"
+          - name: GF_SMTP_FROM_NAME
+            value: "Grafana Alerts"
+          - name: GF_SMTP_SKIP_VERIFY
+            value: "false" 
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: /robots.txt
+              port: 3000
+              scheme: HTTP
+            initialDelaySeconds: 10
+            periodSeconds: 30
+            successThreshold: 1
+            timeoutSeconds: 2
+          livenessProbe:
+            failureThreshold: 3
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            successThreshold: 1
+            tcpSocket:
+              port: 3000
+            timeoutSeconds: 1
+          resources:
+            requests:
+              cpu: 250m
+              memory: 750Mi
+          volumeMounts:
+            - mountPath: /var/lib/grafana
+              name: grafana-pv
+      volumes:
+        - name: grafana-pv
+          persistentVolumeClaim:
+            claimName: grafana-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana
+spec:
+  ports:
+    - port: 3000
+      protocol: TCP
+      targetPort: http-grafana
+  selector:
+    app: grafana
+  sessionAffinity: None
+  type: LoadBalancer
+```
+
+> **NOTA:**
+> Tomar en cuenta que grafana necesito variables de entorno para poder usar el SMTP de Gmail y enviar alertas por correo.
+
+> Se recomienda crear un usuario de Gmail exclusivo para el envío de alertas y no usar el correo personal.
+
+> Se recomienda usar una contraseña de aplicación para el envío de alertas y no la contraseña del correo personal.
+
+```bash
+env:
+- name: GF_SMTP_ENABLED
+value: "true"
+- name: GF_SMTP_HOST
+value: "smtp.gmail.com:587"
+- name: GF_SMTP_USER
+value: "tu_correo@gmail.com"
+- name: GF_SMTP_PASSWORD
+value: "tu_contraseña_de_aplicacion"
+- name: GF_SMTP_FROM_ADDRESS
+value: "tu_correo@gmail.com"
+- name: GF_SMTP_FROM_NAME
+value: "Grafana Alerts"
+- name: GF_SMTP_SKIP_VERIFY
+value: "false"
+```
+
+Aplicar el manifiesto de Grafana:
+
+```bash
+kubectl apply -f grafana.yaml -n sa-p8
+```
+
+Revisar que el pod de Grafana esté en estado `Running`:
+
+```bash
+kubectl get pods -n sa-p8
+```
+
+Agregar el podsa-p8 a cada uno de los pods que se quieran monitorear:
+
+```yaml
+apiVersion: sa-p8.googleapis.com/v1
+kind: Podsa-p8
+metadata:
+  name: equipos
+  namespace: sa-p8
+spec:
+  selector:
+    matchLabels:
+      app: equipos
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 15s
+```
+
+Consultar la IP externa de Grafana:
+```bash
+kubectl get svc -n sa-p8
+```
+
+Acceder a Grafana en el navegador:
+```bash
+http://<EXTERNAL_IP>:3000
+```
+
+Iniciar sesión con las credenciales por defecto:
+```bash
+admin/admin
+```
+Agregar la fuente de datos de Prometheus:
+
+Grafana > Configuration > Data Sources > Add data source > Prometheus
+```yaml
+http://prometheus-operated.gmp-system.svc.cluster.local:9090
+```
+---
+
+## Agregar visualizaciones y paneles:
+
+Grafana > Dashboards > New Dashboard > Add new panel
+
+>**NOTA:**
+> Se recomienda usar consultas PromQL para obtener métricas de los pods. Usar la opción de "Add Query" para agregar consultas y visualizar las métricas.
+
+1. CPU % (promedio)
+
+```yaml
+sum by (app)(
+  rate(container_cpu_usage_seconds_total{namespace="sa-p8",container!="POD"}[5m])
+) * 100
+```
+
+2. Memoria % (promedio)
+
+```yaml
+sum by (app)(
+  container_memory_working_set_bytes{namespace="sa-p8",container!="POD"}
+) / 1024 / 1024
+```
+
+3. CPU % por microservicio
+
+```yaml
+sum by (app) (
+  label_replace(
+    rate(
+      container_cpu_usage_seconds_total{
+        namespace="sa-p8",
+        container!="POD",
+        pod=~"(equipos|mantenimiento|reportes|ubicaciones)-.*"
+      }[5m]
+    ),
+    "app", "$1", "pod", "^(equipos|mantenimiento|reportes|ubicaciones)-.*$"
+  )
+) * 100
+```
+
+4. Memoria (MiB) por microservicio
+
+```yaml
+sum by (app) (
+  label_replace(
+    container_memory_working_set_bytes{
+      namespace="sa-p8",
+      container!="POD",
+      pod=~"(equipos|mantenimiento|reportes|ubicaciones)-.*"
+    } / 1024 / 1024,
+    "app", "$1", "pod", "^(equipos|mantenimiento|reportes|ubicaciones)-.*$"
+  )
+)
+```
+
+5. Network RX (KiB/s) por microservicio
+
+```yaml
+sum by (app) (
+  label_replace(
+    rate(
+      container_network_receive_bytes_total{
+        namespace="sa-p8",
+        pod=~"(equipos|mantenimiento|reportes|ubicaciones)-.*",
+        interface!="lo"
+      }[5m]
+    ) / 1024,
+    "app", "$1", "pod", "^(equipos|mantenimiento|reportes|ubicaciones)-.*$"
+  )
+)
+```
+
+6. Network TX (KiB/s) por microservicio
+
+```yaml
+sum by (app) (
+  label_replace(
+    rate(
+      container_network_transmit_bytes_total{
+        namespace="sa-p8",
+        pod=~"(equipos|mantenimiento|reportes|ubicaciones)-.*",
+        interface!="lo"
+      }[5m]
+    ) / 1024,
+    "app", "$1", "pod", "^(equipos|mantenimiento|reportes|ubicaciones)-.*$"
+  )
+)
+```
+
+7. Disk reads (ops/s) por microservicio
+
+```yaml
+sum by (app) (
+  label_replace(
+    rate(
+      container_fs_reads_total{
+        namespace="sa-p8",
+        container!="POD",
+        pod=~"(equipos|mantenimiento|reportes|ubicaciones)-.*"
+      }[5m]
+    ),
+    "app", "$1", "pod", "^(equipos|mantenimiento|reportes|ubicaciones)-.*$"
+  )
+)
+```
+
+8. Disk writes (ops/s) por microservicio
+
+```yaml
+sum by (app) (
+  label_replace(
+    rate(
+      container_fs_writes_total{
+        namespace="sa-p8",
+        container!="POD",
+        pod=~"(equipos|mantenimiento|reportes|ubicaciones)-.*"
+      }[5m]
+    ),
+    "app", "$1", "pod", "^(equipos|mantenimiento|reportes|ubicaciones)-.*$"
+  )
+)
+```
+
+9. Número de pods vivos por microservicio
+
+```yaml
+count by (app) (
+  label_replace(
+    up{namespace="sa-p8"}, 
+    "app", 
+    "$1", 
+    "pod", 
+    "^([^-]+)-.*$"
+    )
+  )
+```
 
 ---
 
-## Comandos Utilizados
+## Agregar alertas en Grafana:
 
-- Aplicar configuracion de un archivo *.yaml*
-    ```
-    kubectl apply -f k8s/namespace.yaml -n sa-p6
-    ```
+>**NOTA:**
+> Contact point debe ser configurado para enviar alertas por correo electrónico. (grafana-default-email) Utilizara el SMTP de Gmail configurado en el despliegue de Grafana.
 
-- Aplicar configuracion de todos los archivos *.yaml*
-    ```
-    kubectl apply -f k8s/. -n sa-p6
-    ```
+Grafana > Alerting > Contact points > Edit default contact point
+  
+  ```yaml
+  Name: grafana-default-email
+  Type: Email
+  Email addresses: mym.demo@gmail.com
+  ```
 
-- Mostrar toda la informacion del namespace
-    ```
-    kubectl get all -n sa-p6
-    ```
+Grafana > Alerting > Alert rules > New alert rule
 
-- Mostrar los pods del namespace
-    ```
-    kubectl get pods -n sa-p6
-    ```
-- Mostrar los servicios del namespace
-    ```
-    kubectl get services -n sa-p6
-    ```
+Rule Name: `HighPodCPU`
 
-- Mostrar los deployments del namespace
-    ```
-    kubectl get deployments -n sa-p6
-    ```
-    
-- Ejecutar un pod
-    ```
-    kubectl exec -n sa-p6 -it equipos-65fb7b457f-swhf9 -- sh
-    ```
-- Obtener logs de un pod
-    ```
-    kubectl logs -n sa-p6 job/registro-cronjob-29056370
-    ```
-
-- Obtener informacion del estado de un pod
-    ```
-    kubectl describe pod equipos-65fb7b457f-swhf9 -n sa-p6
-    ```
-
-- Reiniciar un deployment
-    ```
-    kubectl rollout restart deployment equipos -n pa-p6
-    ```
-
-- Eliminar toda la informacion del namespace
-    ```
-    kubectl delete all -n sa-p6
-    ```
-
-- Eliminar un pod del namespace
-    ```
-    kubectl delete pod/equipos-86cfb596fd-5xbss -n sa-p6
-    ```
-
-- Eliminar un servicio del namespace
-    ```
-    kubectl delete service/equipos -n sa-p6
-    ```
-
-- Eliminar un deployment del namespace
-    ```
-    kubectl delete deployment.apps/equipos -n sa-p6
-    ```
-
-## Listado de Configuración YAML
-
-    k8s/...
+Consulta PromQL:
+```yaml
+sum by (app) (
+  label_replace(
+    rate(
+      container_cpu_usage_seconds_total{
+        namespace="sa-p8",
+        container!="POD",
+        pod=~"(equipos|mantenimiento|reportes|ubicaciones)-.*"
+      }[5m]
+    ),
+    "app", "$1", "pod", "^(equipos|mantenimiento|reportes|ubicaciones)-.*$"
+  )
+) * 100
+```
+WHEN QUERY `IS ABOVE` 60 (60%) -- For `1 MINUTES`
 
 
+Rule Name: `HighPodMemory`
 
+Consulta PromQL:
+```yaml
+sum by (app) (
+  label_replace(
+    container_memory_working_set_bytes{
+      namespace="sa-p8",
+      container!="POD",
+      pod=~"(equipos|mantenimiento|reportes|ubicaciones)-.*"
+    } / 1024 / 1024,
+    "app", "$1", "pod", "^(equipos|mantenimiento|reportes|ubicaciones)-.*$"
+  )
+)
+```
+WHEN QUERY  `IS ABOVE` 110 (MiB) -- For `1 MINUTES`
 
+> **NOTA:**
+> Para probar las alertas, se puede usar el siguiente comando para aumentar la carga de CPU y memoria de los pods.
 
+```bash
+kubectl -n sa-p8 exec deploy/equipos -- sh -c "yes > /dev/null & sleep 240"
+```
+> **NOTA:**
+> Para detener el uso de CPU y memoria, se puede usar el siguiente comando:
+
+```bash
+kubectl -n sa-p8 exec deploy/equipos -- pkill yes
+```
+
+> **NOTA:**
+> Para asegurar un reinicio limpio del pod es mejor un reinicio del mismo.
+
+```bash
+kubectl -n sa-p8 rollout restart deployment equipos
+```
+
+> **NOTA:**
+> Escalado manual rapido para no esperar el HPA automatico.
+
+```bash
+kubectl -n sa-p8 scale deployment equipos --replicas=1
+```
+---
+
+## Logging

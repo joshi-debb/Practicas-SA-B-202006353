@@ -1,0 +1,13 @@
+# collector-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-operated
+  namespace: gmp-system
+spec:
+  selector:
+    app.kubernetes.io/name: collector
+  ports:
+  - name: web
+    port: 9090           # Grafana usará este puerto “standard”
+    targetPort: 19090    # mapea al puerto real del contenedor
