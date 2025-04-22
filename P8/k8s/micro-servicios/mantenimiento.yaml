@@ -23,9 +23,9 @@ spec:
           limits:
             memory: "128Mi"
             cpu: "250m"
-            
         ports:
-        - containerPort: 8083
+        - name: metrics
+          containerPort: 8083
         env:
         - name: DB_HOST
           value: "sa-202006353-practicas.c7qcsa8iso3p.us-east-2.rds.amazonaws.com"
@@ -48,7 +48,8 @@ spec:
   selector:
     app: mantenimiento
   ports:
-  - port: 8083
+  - name: metrics
+    port: 8083
     targetPort: 8083
   type: ClusterIP
 
@@ -72,3 +73,18 @@ spec:
       target:
         type: Utilization
         averageUtilization: 80
+        
+---
+apiVersion: monitoring.googleapis.com/v1
+kind: PodMonitoring
+metadata:
+  name: mantenimiento
+  namespace: sa-p8
+spec:
+  selector:
+    matchLabels:
+      app: mantenimiento
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: 15s
