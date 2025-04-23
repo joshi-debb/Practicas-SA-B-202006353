@@ -115,6 +115,95 @@ kubectl exec -it elasticsearch-master-0 -n logging -- `
 > La contraseña de elasticsearch es la misma para Kibana y Logstash.
 
 ```yaml
+# logstash-values.yaml
+
+config:
+  ls.java.opts: "-Xmx512m -Xms512m"
+
+replicas: 1
+
+repository: docker.elastic.co/logstash/logstash
+tag: "8.6.2"
+pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  ports:
+    - name: beats
+      port: 5044
+      targetPort: 5044
+    - name: http
+      port: 9600
+      targetPort: http
+
+logstashConfig:
+  logstash.yml: |
+    http.host: 0.0.0.0
+    xpack.monitoring.enabled: false
+    log.level: warn
+
+logstashPipeline:
+  logstash.conf: |
+    input {
+      beats {
+        port => 5044
+      }
+    }
+    filter {
+      if [event][dataset] == "elasticsearch.server" or
+        [json_message] =~ /\[logstash\.outputs\.elasticsearch\]/ {
+        drop { }
+      }
+    }
+    output {
+      elasticsearch {
+        hosts => ["https://elasticsearch-master:9200"]
+        index => "logs-%{+YYYY.MM.dd}"
+        user => "elastic"
+        password => "${ELASTIC_PASSWORD}"
+        ssl => true
+        ssl_certificate_verification => false
+      }
+    }
+
+persistence:
+  enabled: true
+  volumeClaimTemplate:
+    accessModes: ["ReadWriteOnce"]
+    resources:
+      requests:
+        storage: 20Gi
+
+resources:
+  requests:
+    cpu:    "500m"
+    memory: "2Gi"
+  limits:
+    cpu:    "1"
+    memory: "4Gi"
+
+extraEnvs:
+  - name: ELASTIC_PASSWORD
+    value: "rJyBig13zgaAaxtH"
+  - name: LS_JAVA_OPTS
+    value: "-Xmx512m -Xms512m"
+
+updateStrategy: OnDelete
+```
+1. Desplegar Logstash:
+
+```bash
+helm install logstash elastic/logstash -n logging -f .\k8s\logging\logstash-values.yaml
+```
+
+2. Verificar que las env vars de Logstash están bien configuradas:
+
+```bash
+kubectl exec -it logstash-logstash-0 -n logging -- env | Select-String "ELASTIC_PASSWORD"
+kubectl exec -it logstash-logstash-0 -n logging -- env | Select-String "LS_JAVA_OPTS"
+```
+
+```yaml
 # filebeat-values.yaml
 daemonset:
   enabled: true
@@ -198,105 +287,23 @@ resources:
 helm install filebeat elastic/filebeat -n logging -f .\k8s\logging\filebeat-values.yaml
 ```
 
-```yaml
-# logstash-values.yaml
-
-config:
-  ls.java.opts: "-Xmx512m -Xms512m"
-
-replicas: 1
-
-repository: docker.elastic.co/logstash/logstash
-tag: "8.6.2"
-pullPolicy: IfNotPresent
-
-service:
-  type: ClusterIP
-  ports:
-    - name: beats
-      port: 5044
-      targetPort: 5044
-    - name: http
-      port: 9600
-      targetPort: http
-
-logstashConfig:
-  logstash.yml: |
-    http.host: 0.0.0.0
-    xpack.monitoring.enabled: false
-
-logstashPipeline:
-  logstash.conf: |
-    input {
-      beats {
-        port => 5044
-      }
-    }
-    filter {
-      # Example: grok, mutate, etc.
-    }
-    output {
-      stdout { codec => rubydebug }
-      elasticsearch {
-        hosts => ["https://elasticsearch-master:9200"]
-        index => "logs-%{+YYYY.MM.dd}"
-        user => "elastic"
-        password => "${ELASTIC_PASSWORD}"
-        ssl => true
-        ssl_certificate_verification => false
-      }
-    }
-
-persistence:
-  enabled: true
-  volumeClaimTemplate:
-    accessModes: ["ReadWriteOnce"]
-    resources:
-      requests:
-        storage: 20Gi
-
-resources:
-  requests:
-    cpu:    "500m"
-    memory: "2Gi"
-  limits:
-    cpu:    "1"
-    memory: "4Gi"
-
-extraEnvs:
-  - name: ELASTIC_PASSWORD
-    value: "8bPm9bSwTHk0JqbE"
-  - name: LS_JAVA_OPTS
-    value: "-Xmx512m -Xms512m"
-
-updateStrategy: OnDelete
-```
-1. Desplegar Logstash:
-
-```bash
-helm install logstash elastic/logstash -n logging -f .\k8s\logging\logstash-values.yaml
-```
-
-2. Verificar que las env vars de Logstash están bien configuradas:
-
-```bash
-kubectl exec -it logstash-logstash-0 -n logging -- env | Select-String "ELASTIC_PASSWORD"
-kubectl exec -it logstash-logstash-0 -n logging -- env | Select-String "LS_JAVA_OPTS"
-```
-
-3. Probar la conexión de Filebeat a Logstash:
+2. Probar la conexión de Filebeat a Logstash:
 
 ```bash
 kubectl exec -it filebeat-filebeat-977pc -n logging -- filebeat test output -e
 ```
 
-4. Verificar que Logstash está recibiendo eventos:
+3. Verificar que Logstash está recibiendo eventos:
 
 ```bash
 kubectl logs -f statefulset/logstash-logstash -n logging
 ```
 
-5. Comprobar los indices en Elasticsearch:
+> **NOTA:**
+> Generar trafico de logs con `curl` o `Postman`
+> Revisar los logs de los microservicios para ver si se están enviando correctamente a Logstash.
+
+4. Comprobar los indices en Elasticsearch:
 
 ```bash
 kubectl exec -it elasticsearch-master-0 -n logging -- `
@@ -314,7 +321,7 @@ pullPolicy: IfNotPresent
 elasticsearch:
   hosts: ["https://elasticsearch-master:9200"]
   username: "elastic"
-  password: "8bPm9bSwTHk0JqbE"
+  password: "rJyBig13zgaAaxtH"
   ssl:
     verificationMode: none # ignora certificado autofirmado
 
@@ -327,7 +334,7 @@ resources:
     memory: "2Gi"
 
 service:
-  type: ClusterIP
+  type: LoadBalancer
   port: 5601
 ```
 
@@ -337,19 +344,16 @@ service:
 helm install kibana elastic/kibana -n logging -f .\k8s\logging\kibana-values.yaml
 ```
 
-2. Exponer Kibana localmente:
 
+2. Acceder a Kibana en el navegador:
 ```bash
-kubectl port-forward svc/kibana-kibana 5601:5601 -n logging
+http://<EXTERNAL-IP>:5601
 ```
-
-> En el navegador: http://localhost:5601
 > Usuario: elastic
 > Contraseña: 8bPm9bSwTHk0JqbE
 
 > **NOTA:**
 > La contraseña de elasticsearch es la misma para Kibana y Logstash.
-
 
 Revisar el flujo de logs en Kibana:
 
@@ -357,9 +361,6 @@ confirmar que estan pasando por filebeat y logstash:
 ```bash
 kubectl logs -f statefulset/logstash-logstash -n logging
 ```
-
-Generar tra
-
 
 Revisar los indices en Kibana:
 
@@ -379,62 +380,12 @@ service.keyword: "equipos" | service.keyword: "mantenimiento" | service.keyword:
 
 ## Prometheus y Grafana
 
-Habilita MSP en tu clúster:
+Agregar repositorio de Helm de Prometheus:
 
 ```bash
-# Seleccionar el proyecto de GCP
-gcloud config set project hallowed-key-458002
-
-# Clúster zonal
-gcloud container clusters update sa-cluster-practica8 --zone us-central1-b --enable-managed-prometheus
-
-# (o) clúster regional
-gcloud container clusters update <CLUSTER_NAME> --region <REGION> --enable-managed-prometheus
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm repo update
 ```
-
-> **NOTA:** 
-> GKE 1.27+ lo trae habilitado por defecto; el comando lo activa si está apagado.
-
-Revisar que el MSP está habilitado:
-
-```bash
-kubectl get pods -n gmp-system
-```
-
-Habilitar el collector-service en el namespace `gmp-system`:
-
-```yaml
-# collector-service.yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: prometheus-operated
-  namespace: gmp-system
-spec:
-  selector:
-    app.kubernetes.io/name: collector
-  ports:
-  - name: web
-    port: 9090           # Grafana usará este puerto “standard”
-    targetPort: 19090    # mapea al puerto real del contenedor
-```
-
-```bash
-kubectl apply -f collector-service.yaml -n gmp-system
-```
-
-Revisar que el servicio está funcionando:
-
-```bash
-kubectl -n gmp-system port-forward svc/prometheus-operated 9090:9090 --address 0.0.0.0
-Invoke-WebRequest http://localhost:9090/metrics -UseBasicParsing | Select-Object -First 5
-```
-
-Despliegue de Grafana
-
-> **NOTA:**
-> El despliegue de Grafana es mejor hacerlo segun la documentacion oficial.
-> https://grafana.com/docs/grafana/latest/setup-grafana/installation/kubernetes/
 
 Crear el namespace `monitoring`:
 
@@ -442,183 +393,117 @@ Crear el namespace `monitoring`:
 kubectl create namespace monitoring
 ```
 
-Crear el archivo de despliegue `grafana.yaml`:
+Crear el archivo de despliegue `prometheus-values.yaml`:
 
 ```yaml
----
-apiVersion: v1
-kind: PersistentVolumeClaim
-metadata:
-  name: grafana-pvc
-spec:
-  accessModes:
-    - ReadWriteOnce
-  resources:
-    requests:
-      storage: 1Gi
----
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  labels:
-    app: grafana
-  name: grafana
-spec:
-  selector:
-    matchLabels:
-      app: grafana
-  template:
-    metadata:
-      labels:
-        app: grafana
-    spec:
-      securityContext:
-        fsGroup: 472
-        supplementalGroups:
-          - 0
-      containers:
-        - name: grafana
-          image: grafana/grafana:latest
-          imagePullPolicy: IfNotPresent
-          ports:
-            - containerPort: 3000
-              name: http-grafana
-              protocol: TCP
-          env:
-          - name: GF_SMTP_ENABLED
-            value: "true"
-          - name: GF_SMTP_HOST
-            value: "smtp.gmail.com:587"
-          - name: GF_SMTP_USER
-            value: "mym.jayjay@gmail.com"
-          - name: GF_SMTP_PASSWORD
-            value: "qgdpioekliemtxbd"
-          - name: GF_SMTP_FROM_ADDRESS
-            value: "mym.jayjay@gmail.com"
-          - name: GF_SMTP_FROM_NAME
-            value: "Grafana Alerts"
-          - name: GF_SMTP_SKIP_VERIFY
-            value: "false" 
-          readinessProbe:
-            failureThreshold: 3
-            httpGet:
-              path: /robots.txt
-              port: 3000
-              scheme: HTTP
-            initialDelaySeconds: 10
-            periodSeconds: 30
-            successThreshold: 1
-            timeoutSeconds: 2
-          livenessProbe:
-            failureThreshold: 3
-            initialDelaySeconds: 30
-            periodSeconds: 10
-            successThreshold: 1
-            tcpSocket:
-              port: 3000
-            timeoutSeconds: 1
+# prometheus-values.yaml
+# prometheus-values.yaml
+prometheus:
+  prometheusSpec:
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    serviceMonitorNamespaceSelector:
+      matchNames:
+        - sa-p8
+    podMonitorNamespaceSelector:
+      matchNames:
+        - sa-p8
+
+    # Retención de métricas y almacenamiento en disco
+    retention: 7d
+    storageSpec:
+      volumeClaimTemplate:
+        spec:
+          accessModes: ["ReadWriteOnce"]
           resources:
             requests:
-              cpu: 250m
-              memory: 750Mi
-          volumeMounts:
-            - mountPath: /var/lib/grafana
-              name: grafana-pv
-      volumes:
-        - name: grafana-pv
-          persistentVolumeClaim:
-            claimName: grafana-pvc
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: grafana
-spec:
-  ports:
-    - port: 3000
-      protocol: TCP
-      targetPort: http-grafana
-  selector:
-    app: grafana
-  sessionAffinity: None
-  type: LoadBalancer
+              storage: 5Gi
 ```
 
-> **NOTA:**
-> Tomar en cuenta que grafana necesito variables de entorno para poder usar el SMTP de Gmail y enviar alertas por correo.
-
-> Se recomienda crear un usuario de Gmail exclusivo para el envío de alertas y no usar el correo personal.
-
-> Se recomienda usar una contraseña de aplicación para el envío de alertas y no la contraseña del correo personal.
+Instalación de Prometheus:
 
 ```bash
-env:
-- name: GF_SMTP_ENABLED
-value: "true"
-- name: GF_SMTP_HOST
-value: "smtp.gmail.com:587"
-- name: GF_SMTP_USER
-value: "tu_correo@gmail.com"
-- name: GF_SMTP_PASSWORD
-value: "tu_contraseña_de_aplicacion"
-- name: GF_SMTP_FROM_ADDRESS
-value: "tu_correo@gmail.com"
-- name: GF_SMTP_FROM_NAME
-value: "Grafana Alerts"
-- name: GF_SMTP_SKIP_VERIFY
-value: "false"
+helm install prometheus prometheus-community/kube-prometheus-stack `
+  -n monitoring `
+  -f k8s/monitoring/prometheus-values.yaml
 ```
 
-Aplicar el manifiesto de Grafana:
-
-```bash
-kubectl apply -f k8s/monitoring/grafana.yaml -n monitoring
-```
-
-Revisar que el pod de Grafana esté en estado `Running`:
+Revisar que el pod de Prometheus esté en estado `Running`:
 
 ```bash
 kubectl get pods -n monitoring
 ```
 
-Agregar el pod monitoring a cada uno de los pods que se quieran monitorear:
+Agregar el service monitoring a cada uno de los pods que se quieran monitorear:
 
 ```yaml
-apiVersion: monitoring.googleapis.com/v1
-kind: PodMonitoring
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
 metadata:
-  name: equipos
-  namespace: monitoring
+  name: equipos-servicemonitor
+  namespace: sa-p8
+  labels:
+    release: prometheus
 spec:
   selector:
     matchLabels:
       app: equipos
+  namespaceSelector:
+    matchNames:
+      - sa-p8
   endpoints:
-  - port: metrics
-    path: /metrics
-    interval: 15s
+    - port: metrics
+      path: /metrics
+      interval: 15s
 ```
 
-Consultar la IP externa de Grafana:
+Exponer Grafana como LoadBalancer:
+
 ```bash
-kubectl get svc -n monitoring
+kubectl patch svc prometheus-grafana `
+  -n monitoring `
+  -p '{"spec":{"type":"LoadBalancer"}}'
 ```
 
 Acceder a Grafana en el navegador:
 ```bash
-http://<EXTERNAL_IP>:3000
+http://<EXTERNAL-IP>:80
 ```
+
+> **NOTA:**
+> Las credenciales por defecto son admin/prom-operator
 
 Iniciar sesión con las credenciales por defecto:
 ```bash
-admin/admin
+admin/prom-operator
 ```
+
+> **NOTA:**
+> Si no funciona, puedes obtener la contraseña de admin desde el pod de Grafana:
+
+Usuario:
+```bash
+kubectl get secret prometheus-grafana -n monitoring -o jsonpath='{.data.admin-user}' `
+  | % { [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($_)) }
+```
+
+Contraseña:
+```bash
+kubectl get secret prometheus-grafana -n monitoring -o jsonpath='{.data.admin-password}' `
+  | % { [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($_)) }
+```
+
 Agregar la fuente de datos de Prometheus:
 
 Grafana > Configuration > Data Sources > Add data source > Prometheus
+
 ```yaml
-http://prometheus-operated.gmp-system.svc.cluster.local:9090
+http://prometheus-kube-prometheus-prometheus.monitoring:9090/
 ```
+> **NOTA:**
+> Esta URL es la URL interna del servicio de Prometheus en el namespace `monitoring`.
+> Save & Test para verificar que la conexión es correcta.
+
 ---
 
 ## Dashboard de Grafana:
@@ -747,15 +632,9 @@ sum by (app) (
 9. Número de pods vivos por microservicio
 
 ```yaml
-count by (app) (
-  label_replace(
-    up{namespace="sa-p8"}, 
-    "app", 
-    "$1", 
-    "pod", 
-    "^([^-]+)-.*$"
-    )
-  )
+count by (pod) (
+  kube_pod_status_ready{namespace="sa-p8", condition="true"}
+)
 ```
 
 ---

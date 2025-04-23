@@ -1,3 +1,4 @@
+#filebeat-values.yaml
 daemonset:
   enabled: true
 

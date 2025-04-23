@@ -7,7 +7,7 @@ pullPolicy: IfNotPresent
 elasticsearch:
   hosts: ["https://elasticsearch-master:9200"]
   username: "elastic"
-  password: "hmBem8BTf69snAvB"
+  password: "6dLViy9XUSIbKCRC"
   ssl:
     verificationMode: none # ignora certificado autofirmado
 
@@ -20,5 +20,5 @@ resources:
     memory: "2Gi"
 
 service:
-  type: ClusterIP
+  type: LoadBalancer
   port: 5601

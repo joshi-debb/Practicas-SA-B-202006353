@@ -74,16 +74,21 @@ spec:
         averageUtilization: 80
 
 ---
-apiVersion: monitoring.googleapis.com/v1
-kind: PodMonitoring
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
 metadata:
-  name: equipos
+  name: equipos-servicemonitor
   namespace: sa-p8
+  labels:
+    release: prometheus
 spec:
   selector:
     matchLabels:
       app: equipos
+  namespaceSelector:
+    matchNames:
+      - sa-p8
   endpoints:
-  - port: metrics
-    path: /metrics
-    interval: 15s
+    - port: metrics
+      path: /metrics
+      interval: 15s

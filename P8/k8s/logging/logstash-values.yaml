@@ -1,4 +1,4 @@
-
+#logstash-values.yaml
 config:
   ls.java.opts: "-Xmx512m -Xms512m"
 
@@ -36,6 +36,13 @@ logstashPipeline:
         [json_message] =~ /\[logstash\.outputs\.elasticsearch\]/ {
         drop { }
       }
+
+      # Renombrar el campo "service" a "service.name" siguiendo ECS
+      if [service] and ![service][name] {
+        mutate {
+          rename => { "service" => "[service][name]" }
+        }
+      }
     }
     output {
       elasticsearch {
@@ -66,7 +73,7 @@ resources:
 
 extraEnvs:
   - name: ELASTIC_PASSWORD
-    value: "hmBem8BTf69snAvB"
+    value: "6dLViy9XUSIbKCRC"
   - name: LS_JAVA_OPTS
     value: "-Xmx512m -Xms512m"
 
