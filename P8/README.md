@@ -2,21 +2,24 @@
 
 ## Instalación y Configuración
 
---- 
-### ELK Stack
+---
+### Preparacion de microservicios
 
-Preparar el namespace logging:
+> **NOTA:**
+> Cada microservicio debe poder enviar logs a Logstash.
+> Para ello, se debe agregar un logger en cada microservicio
 
-```bash
-kubectl create namespace logging
-```
+Ejemplo de logger en `reportes`:
 
-Añadir repositorio elastic desde Helm:
+![Image](https://github.com/user-attachments/assets/f68c7205-e221-4b38-9e53-eb15f9e46c2d)
 
-```bash
-helm repo add elastic https://helm.elastic.co
-helm repo update
-```
+Esto captura los logs de cada microservicio y los envía a Logstash.
+
+> **NOTA:**
+> Varia segun el microservicio, pero la idea es la misma.
+
+---
+### Preparacion del cluster
 
 > **NOTA:**
 > Importante deshabilitar el servicio de loggin de GKE para evitar sobrecarga de logs.
@@ -36,7 +39,7 @@ gcloud container clusters describe sa-cluster-practica8 `
   --format="value(loggingConfig.componentConfig.enableComponents)"
 ```
 
-Verificar que el logging de GKE está deshabilitado:
+#### Verificar que el logging de GKE está deshabilitado:
 
 Observability > Logging > Logs Explorer
 
@@ -53,6 +56,22 @@ Observability > Logging > Logs Router > Exclusions
 
 ```yaml
 resource.type="k8s_container"
+```
+
+--- 
+### ELK Stack
+
+Preparar el namespace logging:
+
+```bash
+kubectl create namespace logging
+```
+
+Añadir repositorio elastic desde Helm:
+
+```bash
+helm repo add elastic https://helm.elastic.co
+helm repo update
 ```
 
 Archivos de valores (.yaml):
