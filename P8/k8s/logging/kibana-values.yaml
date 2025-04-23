@@ -7,7 +7,7 @@ pullPolicy: IfNotPresent
 elasticsearch:
   hosts: ["https://elasticsearch-master:9200"]
   username: "elastic"
-  password: "6dLViy9XUSIbKCRC"
+  password: "iGcbGMLXeDhhqiWV"
   ssl:
     verificationMode: none # ignora certificado autofirmado
 

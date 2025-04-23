@@ -376,6 +376,10 @@ buscar logs por servicio:
 service.keyword: "equipos" | service.keyword: "mantenimiento" | service.keyword: "reportes" | service.keyword: "ubicaciones"
 ```
 
+Tu configuracion del namespace Logging debe verse similar a esto:
+
+![Image](https://github.com/user-attachments/assets/513b1eb8-d267-487e-8698-91dddeb4879c)
+
 ---
 
 ## Prometheus y Grafana
@@ -397,7 +401,6 @@ Crear el archivo de despliegue `prometheus-values.yaml`:
 
 ```yaml
 # prometheus-values.yaml
-# prometheus-values.yaml
 prometheus:
   prometheusSpec:
     serviceMonitorSelectorNilUsesHelmValues: false
@@ -418,7 +421,31 @@ prometheus:
           resources:
             requests:
               storage: 5Gi
+
+grafana:
+  smtp:
+    enabled: true
+    host: smtp.gmail.com:587
+    user: mym.jayjay@gmail.com
+    fromAddress: mym.jayjay@gmail.com
+    fromName: Grafana Alerts
+    skipVerify: false
+    password: "my_password" # Contraseña de aplicación de Gmail
+
+  env:
+    GF_SMTP_ENABLED: "true"
+    GF_SMTP_HOST: "smtp.gmail.com:587"
+    GF_SMTP_USER: "mym.jayjay@gmail.com"
+    GF_SMTP_PASSWORD: "my_password" # Contraseña de aplicación de Gmail
+    GF_SMTP_FROM_ADDRESS: "mym.jayjay@gmail.com"
+    GF_SMTP_FROM_NAME: "Grafana Alerts"
+    GF_SMTP_SKIP_VERIFY: "false"
 ```
+
+> **NOTA:**
+
+> Se deben agregar variables de entorno para la configuración de SMTP en Grafana.
+> La contraseña de Gmail debe ser una contraseña de aplicación, no la contraseña normal de Gmail.
 
 Instalación de Prometheus:
 
@@ -503,6 +530,10 @@ http://prometheus-kube-prometheus-prometheus.monitoring:9090/
 > **NOTA:**
 > Esta URL es la URL interna del servicio de Prometheus en el namespace `monitoring`.
 > Save & Test para verificar que la conexión es correcta.
+
+### Tu configuracion del namespace Monitoring debe verse similar a esto:
+
+![Image](https://github.com/user-attachments/assets/46b64c6b-0552-4e2a-a59f-d86789f4f19a)
 
 ---
 
@@ -637,6 +668,12 @@ count by (pod) (
 )
 ```
 
+Tu Dashboard de Grafana debe verse similar a esto:
+
+![Image](https://github.com/user-attachments/assets/b402d93d-edc8-42d7-946f-eca5016767f0)
+
+![Image](https://github.com/user-attachments/assets/d64bfe3b-700e-4229-af68-fc7d8ce2ad7f)
+
 ---
 
 ## Agregar alertas en Grafana:
@@ -717,6 +754,11 @@ kubectl -n sa-p8 rollout restart deployment equipos
 ```bash
 kubectl -n sa-p8 scale deployment equipos --replicas=1
 ```
+
+Tus alertas deben verse similares a esto:
+
+![Image](https://github.com/user-attachments/assets/3a8b2a05-1cf6-406f-963c-0f3420341ef4)
+
 ---
 
 ## Dashboard de Kibana:
@@ -728,59 +770,71 @@ Kibana > Dashboard > Create new dashboard > Add new panel
 
 ## Visualizaciones
 
-### A. Tráfico de Peticiones  
+### 1. Tráfico de Peticiones  
 - **Tipo**: Line chart  
 - **Eje X**: `@timestamp` (intervalos de 1 min)  
 - **Eje Y**: Conteo de documentos  
-- **Split series**: `service.keyword`
 
-### B. Latencia (Percentiles)  
-- **Tipo**: Percentile  
-- **Campo**: `response_time_ms` (o tu métrica de latencia)  
-- Percentiles: p50, p90, p99  
-- **Eje X**: `@timestamp`
-
-### C. Tasa de Errores  
-- **Tipo**: Line chart  
-- **Eje Y**: Conteo de documentos filtrados por `levelname: ERROR`
-- **Split series**: `service.keyword`
-
-### D. Distribución de Niveles de Log  
+### 2. Top Endpoints Más Invocados  
 - **Tipo**: Pie chart  
-- **Slice by**: `levelname.keyword`
-
-### E. Top Endpoints Más Invocados  
-- **Tipo**: Bar chart  
 - **X-axis**: `url.keyword` (o ruta)  
 - **Y-axis**: Conteo de documentos
 
-### F. Tabla de Últimos Errores  
-- **Tipo**: Data Table  
-- **Rows**:  
-- `message.keyword` (solo ERROR)  
-- **Columns**:  
-- `@timestamp`  
-- `request_id`  
-
-### G. Tabla de logs recientes
+### 3. Tabla de logs recientes
 - **Tipo**: Data Table
 - **Rows**:
 - `@timestamp`
 - `service`
 - `levelname`
-- `request_id`
 - `message`
 - **Columns**:
 - `@timestamp` (ordenar por @timestamp descendente)
 
-### H. Top 5 endpoints o mensajes más frecuentes
-- **Tipo**: Bar chart
-- **X-axis**: `message.keyword`
+### 4. Top mensajes más frecuentes
+- **Tipo**: Horizontal Bar chart
+- **X-axis**: Conteo de documentos
+- **Y-axis**: `message.keyword`
+- **Size**: 5
+
+#### 5. Distribución por nivel (INFO, ERROR, etc.)
+- **Tipo**: Pie chart
+- **Metrics**: Conteo de documentos
+- **Slice by**: `levelname.keyword` 
+- **Size**: 5
+
+#### 6. Conteo de peticiones por método HTTP
+- **Tipo**: Pie chart
+- **Slice by**: meta.req.method.keyword
+- **Metrics**: Conteo de documentos
+
+
+#### 7. Errores por Código de Estado HTTP
+- **Tipo**: Donut chart
+- **Slice by**: meta.res.statusCode
+- **Metrics**: Conteo de documentos
+
+
+#### 8. Distribución de User-Agent
+- **Tipo**: Vertical Bar chart
+- **X-axis**: meta.req.headers.User-Agent.keyword
+- **Y-axis**: Conteo de documentos
+- **Size**: 5
+
+#### 9. Heatmap de Peticiones por Día y Hora
+- **Tipo**: Heat Map
+- **X-axis**: `@timestamp` (intervalos de 1 hora)
+- **Y-axis**: `@timestamp` (intervalos de 1 día)
 - **Metrics**: Conteo de documentos
 - **Size**: 5
 
-#### I. Distribución por nivel (INFO, ERROR, etc.)
-- **Tipo**: Pie chart
-- **Metrics**: Conteo de documentos
-- **X-axis**: `levelname.keyword` 
+#### 10. Análisis de Latencia por Endpoint
+- **Tipo**: Metrics
+- **Primary-metric**: meta.responseTime (promedio)
+- **Breakdown by**: `meta.req.url.keyword`
 - **Size**: 5
+
+Tu dashboard de Kibana debe verse similar a esto:
+
+![Image](https://github.com/user-attachments/assets/c67d41d0-612e-4981-9733-c26d6197f6e5)
+
+![Image](https://github.com/user-attachments/assets/6b67eab7-1abd-4c5e-95ff-4896151e64ad)

@@ -73,7 +73,7 @@ resources:
 
 extraEnvs:
   - name: ELASTIC_PASSWORD
-    value: "6dLViy9XUSIbKCRC"
+    value: "iGcbGMLXeDhhqiWV"
   - name: LS_JAVA_OPTS
     value: "-Xmx512m -Xms512m"
 

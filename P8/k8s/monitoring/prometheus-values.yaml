@@ -19,3 +19,22 @@ prometheus:
           resources:
             requests:
               storage: 5Gi
+
+grafana:
+  smtp:
+    enabled: true
+    host: smtp.gmail.com:587
+    user: mym.jayjay@gmail.com
+    fromAddress: mym.jayjay@gmail.com
+    fromName: Grafana Alerts
+    skipVerify: false
+    password: "qgdpioekliemtxbd"
+
+  env:
+    GF_SMTP_ENABLED: "true"
+    GF_SMTP_HOST: "smtp.gmail.com:587"
+    GF_SMTP_USER: "mym.jayjay@gmail.com"
+    GF_SMTP_PASSWORD: "qgdpioekliemtxbd"
+    GF_SMTP_FROM_ADDRESS: "mym.jayjay@gmail.com"
+    GF_SMTP_FROM_NAME: "Grafana Alerts"
+    GF_SMTP_SKIP_VERIFY: "false"
