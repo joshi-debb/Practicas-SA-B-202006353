@@ -22,6 +22,7 @@ logstashConfig:
   logstash.yml: |
     http.host: 0.0.0.0
     xpack.monitoring.enabled: false
+    log.level: warn
 
 logstashPipeline:
   logstash.conf: |
@@ -31,10 +32,12 @@ logstashPipeline:
       }
     }
     filter {
-      # Example: grok, mutate, etc.
+      if [event][dataset] == "elasticsearch.server" or
+        [json_message] =~ /\[logstash\.outputs\.elasticsearch\]/ {
+        drop { }
+      }
     }
     output {
-      stdout { codec => rubydebug }
       elasticsearch {
         hosts => ["https://elasticsearch-master:9200"]
         index => "logs-%{+YYYY.MM.dd}"
@@ -63,7 +66,7 @@ resources:
 
 extraEnvs:
   - name: ELASTIC_PASSWORD
-    value: "8bPm9bSwTHk0JqbE"
+    value: "hmBem8BTf69snAvB"
   - name: LS_JAVA_OPTS
     value: "-Xmx512m -Xms512m"
 

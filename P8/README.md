@@ -101,7 +101,7 @@ $b64 = kubectl get secret elasticsearch-master-credentials -n logging -o jsonpat
 # decode it
 $ElasticPwd  = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($b64))
 
-# show it (you should see something like z0NTVfiJhfIT70FY)
+# show it (you should see something like DkJbVhZkImsw2403)
 Write-Output $ElasticPwd 
 ```
 
@@ -351,6 +351,30 @@ kubectl port-forward svc/kibana-kibana 5601:5601 -n logging
 > La contraseña de elasticsearch es la misma para Kibana y Logstash.
 
 
+Revisar el flujo de logs en Kibana:
+
+confirmar que estan pasando por filebeat y logstash:
+```bash
+kubectl logs -f statefulset/logstash-logstash -n logging
+```
+
+Generar tra
+
+
+Revisar los indices en Kibana:
+
+Crear un index pattern en Kibana para los logs:
+```yaml
+logs-*    # logs-2023.10.01
+```
+
+Kibana > Discover
+
+buscar logs por servicio:
+```yaml
+service.keyword: "equipos" | service.keyword: "mantenimiento" | service.keyword: "reportes" | service.keyword: "ubicaciones"
+```
+
 ---
 
 ## Prometheus y Grafana
@@ -548,7 +572,7 @@ value: "false"
 Aplicar el manifiesto de Grafana:
 
 ```bash
-kubectl apply -f grafana.yaml -n monitoring
+kubectl apply -f k8s/monitoring/grafana.yaml -n monitoring
 ```
 
 Revisar que el pod de Grafana esté en estado `Running`:
@@ -881,5 +905,3 @@ Kibana > Dashboard > Create new dashboard > Add new panel
 - **Metrics**: Conteo de documentos
 - **X-axis**: `levelname.keyword` 
 - **Size**: 5
-
-
