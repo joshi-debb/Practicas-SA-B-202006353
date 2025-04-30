@@ -2,7 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: my-ingress
-  namespace: sa-p6
+  namespace: sa-p9
   annotations:
     nginx.ingress.kubernetes.io/target-type: ip
     nginx.org/listen-ports: '[80]'

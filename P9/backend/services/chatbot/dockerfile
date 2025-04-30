@@ -1,0 +1,19 @@
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+
+FROM node:20-alpine
+WORKDIR /app
+
+COPY --from=builder /app /app
+
+EXPOSE 8087
+
+CMD ["node", "src/server.js"]
+
+#docker build --platform=linux/amd64 -t us-central1-docker.pkg.dev/hallowed-key-458002-a1/sa-project/chatbot:latest .
+#docker push us-central1-docker.pkg.dev/hallowed-key-458002-a1/sa-project/chatbot:latest

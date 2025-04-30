@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: equipos
-  namespace: sa-p6
+  namespace: sa-p9
 spec:
   replicas: 1
   selector:
@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: equipos
-        image: us-central1-docker.pkg.dev/awesome-icon-454901-t8/sa-p6/equipos:latest
+        image: us-central1-docker.pkg.dev/hallowed-key-458002-a1/sa-p9/equipos:latest
         resources:
           requests:
             memory: "64Mi"
@@ -28,11 +28,11 @@ spec:
         - containerPort: 8081
         env:
         - name: DB_HOST
-          value: "sa-202006353-practicas.c7qcsa8iso3p.us-east-2.rds.amazonaws.com"
+          value: "sa-202006353-prod.cne0mki8e4wp.us-east-2.rds.amazonaws.com"
         - name: DB_USER
           value: "whyrds"
         - name: DB_PASSWORD
-          value: "KilW6kS53ukPsX2OaGfQ"
+          value: "v7lnUneF9cSVSSmdFMiv"
         - name: DB_NAME
           value: "equipos_db"
         - name: DB_PORT
@@ -43,7 +43,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: equipos
-  namespace: sa-p6
+  namespace: sa-p9
 spec:
   selector:
     app: equipos
@@ -57,7 +57,7 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: equipos-autoscaler
-  namespace: sa-p6
+  namespace: sa-p9
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
