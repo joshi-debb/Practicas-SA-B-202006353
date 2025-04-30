@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: reportes
+  namespace: sa-p6
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: reportes
+  template:
+    metadata:
+      labels:
+        app: reportes
+    spec:
+      containers:
+      - name: reportes
+        image: us-central1-docker.pkg.dev/awesome-icon-454901-t8/sa-p6/reportes:latest
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "250m"
+            
+        ports:
+        - containerPort: 8084
+        env:
+        - name: DB_HOST
+          value: "sa-202006353-practicas.c7qcsa8iso3p.us-east-2.rds.amazonaws.com"
+        - name: DB_USER
+          value: "whyrds"
+        - name: DB_PASSWORD
+          value: "KilW6kS53ukPsX2OaGfQ"
+        - name: DB_NAME
+          value: "reportes_db"
+        - name: DB_PORT
+          value: "3306"
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: reportes
+  namespace: sa-p6
+spec:
+  selector:
+    app: reportes
+  ports:
+  - port: 8084
+    targetPort: 8084
+  type: ClusterIP
+
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: reportes-autoscaler
+  namespace: sa-p6
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: reportes
+  minReplicas: 1
+  maxReplicas: 2
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 80
