@@ -30,6 +30,14 @@ spec:
             port:
               number: 8082
       
+      - path: /mantenimiento
+        pathType: Prefix
+        backend:
+          service:
+            name: mantenimiento
+            port:
+              number: 8083
+
       - path: /reportes
         pathType: Prefix
         backend:
@@ -38,10 +46,10 @@ spec:
             port:
               number: 8084
       
-      - path: /mantenimiento
+      - path: /chatbot
         pathType: Prefix
         backend:
           service:
-            name: mantenimiento
+            name: chatbot
             port:
-              number: 8083
+              number: 8085

@@ -15,5 +15,5 @@ EXPOSE 8087
 
 CMD ["node", "src/server.js"]
 
-#docker build --platform=linux/amd64 -t us-central1-docker.pkg.dev/hallowed-key-458002-a1/sa-project/chatbot:latest .
-#docker push us-central1-docker.pkg.dev/hallowed-key-458002-a1/sa-project/chatbot:latest
+#docker build --platform=linux/amd64 -t us-central1-docker.pkg.dev/hallowed-key-458002-a1/sa-p9/chatbot:latest .
+#docker push us-central1-docker.pkg.dev/hallowed-key-458002-a1/sa-p9/chatbot:latest
